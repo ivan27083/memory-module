@@ -1,0 +1,31 @@
+server:
+  port: ${SERVER_PORT:8088}
+
+spring:
+  application:
+    name: memory-module
+  datasource:
+    url: ${MEMORY_DB_URL:jdbc:postgresql://localhost:55432/memory_module}
+    username: ${MEMORY_DB_USERNAME:memory}
+    password: ${MEMORY_DB_PASSWORD:memory}
+  data:
+    redis:
+      host: ${MEMORY_REDIS_HOST:localhost}
+      port: ${MEMORY_REDIS_PORT:6379}
+  flyway:
+    enabled: ${MEMORY_FLYWAY_ENABLED:true}
+
+memory:
+  working-ttl: ${MEMORY_WORKING_TTL:PT24H}
+  retrieval-limit: ${MEMORY_RETRIEVAL_LIMIT:12}
+  http:
+    connect-timeout: ${MEMORY_HTTP_CONNECT_TIMEOUT:PT3S}
+    read-timeout: ${MEMORY_HTTP_READ_TIMEOUT:PT20S}
+  vector:
+    collection: ${MEMORY_QDRANT_COLLECTION:agent_memory}
+    dimensions: ${MEMORY_VECTOR_DIMENSIONS:768}
+    qdrant-url: ${MEMORY_QDRANT_URL:http://localhost:6333}
+  embedding:
+    base-url: ${MEMORY_EMBEDDING_BASE_URL:http://localhost:1234/v1}
+    model: ${MEMORY_EMBEDDING_MODEL:text-embedding-granite-embedding-278m-multilingual}
+    api-key: ${MEMORY_EMBEDDING_API_KEY:local}

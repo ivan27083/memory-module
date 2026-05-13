@@ -1,0 +1,19 @@
+{
+  plugins: {
+    entries: {
+      "memory-module-http": {
+        enabled: true,
+        config: {
+          enabled: true,
+          baseUrl: "http://localhost:8088",
+          agentId: "openclaw-main",
+          retrieveLimit: 5,
+          autoInject: true,
+          autoCapture: true,
+          captureMaxChars: 4000,
+          timeoutMs: 5000
+        }
+      }
+    }
+  }
+}

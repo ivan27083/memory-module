@@ -1,0 +1,16 @@
+{
+  "name": "openclaw-memory-module-http",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "OpenClaw plugin that integrates with the external Spring Boot memory-module over HTTP.",
+  "main": "index.js",
+  "openclaw": {
+    "extensions": [
+      "./index.js"
+    ]
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.5.7"
+  }
+}
