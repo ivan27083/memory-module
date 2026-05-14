@@ -1,31 +1,103 @@
 server:
-  port: ${SERVER_PORT:8088}
+  port: ${SERVER_PORT:8080}
 
 spring:
   application:
     name: memory-module
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
   datasource:
-    url: ${MEMORY_DB_URL:jdbc:postgresql://localhost:55432/memory_module}
+    url: ${MEMORY_DB_URL:jdbc:postgresql://localhost:5432/memory_module}
     username: ${MEMORY_DB_USERNAME:memory}
-    password: ${MEMORY_DB_PASSWORD:memory}
+    password: ${MEMORY_DB_PASSWORD:memory123}
+    driver-class-name: org.postgresql.Driver
   data:
     redis:
       host: ${MEMORY_REDIS_HOST:localhost}
       port: ${MEMORY_REDIS_PORT:6379}
+      database: 0
   flyway:
     enabled: ${MEMORY_FLYWAY_ENABLED:true}
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.openclaw.memory: INFO
+    com.openclaw.memory.agents: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/memory-module.log
+
+# MACMR Configuration
 memory:
-  working-ttl: ${MEMORY_WORKING_TTL:PT24H}
-  retrieval-limit: ${MEMORY_RETRIEVAL_LIMIT:12}
-  http:
-    connect-timeout: ${MEMORY_HTTP_CONNECT_TIMEOUT:PT3S}
-    read-timeout: ${MEMORY_HTTP_READ_TIMEOUT:PT20S}
-  vector:
-    collection: ${MEMORY_QDRANT_COLLECTION:agent_memory}
-    dimensions: ${MEMORY_VECTOR_DIMENSIONS:768}
-    qdrant-url: ${MEMORY_QDRANT_URL:http://localhost:6333}
-  embedding:
-    base-url: ${MEMORY_EMBEDDING_BASE_URL:http://localhost:1234/v1}
-    model: ${MEMORY_EMBEDDING_MODEL:text-embedding-granite-embedding-278m-multilingual}
+  module:
+    # Event Store Configuration
+    event-store:
+      type: ${EVENT_STORE_TYPE:in-memory}  # in-memory | duckdb | postgresql
+      max-events: ${EVENT_STORE_MAX:1000000}
+      export-parquet: ${EVENT_STORE_PARQUET:false}
+      cleanup-interval-hours: 24
+    
+    # Blackboard Configuration
+    blackboard:
+      max-tasks: ${BLACKBOARD_MAX_TASKS:10000}
+      max-artifacts: ${BLACKBOARD_MAX_ARTIFACTS:100000}
+      cleanup-interval-hours: 24
+    
+    # Agents Configuration
+    agents:
+      orchestrator:
+        max-decomposition-depth: 5
+        timeout-seconds: 300
+      retrieval:
+        cache-enabled: true
+        cache-ttl-minutes: 60
+        bm25-enabled: true
+        vector-enabled: true
+        rerank-enabled: true
+      graph:
+        max-nodes: 100000
+        max-edges: 500000
+    
+    # Performance Configuration
+    performance:
+      thread-pool-size: ${THREAD_POOL_SIZE:16}
+      queue-capacity: 1000
+      metric-collection-enabled: true
+    
+    # Security Configuration
+    security:
+      provenance-required: true
+      append-only-enforced: true
+      conflict-tracking-enabled: true
+    
+    # Retrieval Configuration (Legacy - for compatibility)
+    working-ttl: ${MEMORY_WORKING_TTL:PT24H}
+    retrieval-limit: ${MEMORY_RETRIEVAL_LIMIT:12}
+    http:
+      connect-timeout: ${MEMORY_HTTP_CONNECT_TIMEOUT:PT3S}
+      read-timeout: ${MEMORY_HTTP_READ_TIMEOUT:PT20S}
+    vector:
+      collection: ${MEMORY_QDRANT_COLLECTION:agent_memory}
+      dimensions: ${MEMORY_VECTOR_DIMENSIONS:768}
+      qdrant-url: ${MEMORY_QDRANT_URL:http://localhost:6333}
+    embedding:
+      base-url: ${MEMORY_EMBEDDING_BASE_URL:http://localhost:1234/v1}
+      model: ${MEMORY_EMBEDDING_MODEL:text-embedding-granite-embedding-278m-multilingual}
     api-key: ${MEMORY_EMBEDDING_API_KEY:local}

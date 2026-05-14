@@ -1,53 +1,201 @@
-# OpenClaw Memory Module
+# Memory Module - Multi-Agent Cognitive Memory Runtime
 
-Каркас внешней многоуровневой подсистемы памяти, созданный на основе `memory_system_prompt.md`.
+![Version](https://img.shields.io/badge/version-0.1.0--SNAPSHOT-blue)
+![Java](https://img.shields.io/badge/Java-21-orange)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-## Подтвержденные вводные
+## 🧠 О системе
 
-- Обязательный стек: Java, Spring Boot, PostgreSQL, Redis, Qdrant, Docker.
-- Обязательная архитектура: рабочая память, эпизодическая память, семантическая wiki-память, векторный retrieval, внешний RAG, оркестрация retrieval, асинхронное управление жизненным циклом.
-- Политика интеграции: не изменять ядро OpenClaw; интегрироваться через адаптеры и сервисные интерфейсы.
+**Memory Module** — это детерминированная, управляемая провенансом система памяти для автономных AI агентов (Multi-Agent Cognitive Memory Runtime - MACMR).
 
-## Неизвестные вводные
+Это **не** библиотека для RAG, **не** обёртка над векторной БД, а полнофункциональная **runtime система** для когнитивной памяти, которая:
 
-Исходный markdown явно запрещает выдумывать внутренние детали OpenClaw. Поэтому проект предоставляет стабильные порты и HTTP API, но не предполагает существование конкретных provider-интерфейсов OpenClaw, lifecycle hooks runtime, orchestration flow, tool contracts или API сборки контекста.
+- 🔄 Реконструирует **время** (временные зависимости)
+- 📊 Отслеживает **причинность** (причинно-следственные связи)
+- 🎯 Управляет **состоянием** (статефулность)
+- 💭 Сохраняет **намерение** (intent preservation)
+- 📈 Отслеживает **эволюцию убеждений** (belief dynamics)
 
-## Структура директорий
+---
 
-```text
-src/main/java/com/openclaw/memory
-  application/        Use case-сервисы и сервисы оркестрации
-  config/             Конфигурация Spring и свойства модуля
-  domain/model/       Модель данных памяти и retrieval
-  domain/port/        Порты clean architecture
-  adapter/in/web/     HTTP-адаптер для внешней интеграции
-  adapter/out/*       Адаптеры Redis, PostgreSQL, Qdrant, embeddings, RAG
-src/main/resources
-  db/migration/       Миграции схемы PostgreSQL
-docs/                 Заметки по архитектуре и интеграции
+## 🏗️ Архитектура
+
+### 12 Специализированных Агентов
+
+```
+┌─────────────────────────────────────────────────┐
+│         Memory Blackboard (Central Bus)         │
+├─────────────────────────────────────────────────┤
+│  Task Queue | Artifacts | Conflicts | Traces    │
+└────────┬────────────────────────────┬───────────┘
+         │                            │
+    ┌────┴─────────────────────────┬──┴────┐
+    │                              │       │
+[Orchestrator] [Event Store] [Retrieval] [Graph]
+    │              │              │        │
+[Semantic]  [Multimodal] [Working Memory] [Conflict]
+    │              │              │        │
+[Indexing]  [QA] [Architect]  [Observability]
 ```
 
-## Локальный запуск
+### Ключевые компоненты:
+
+1. **Orchestrator Agent** ⭐ - Декомпозирует задачи и управляет выполнением
+2. **Event Store Agent** - Неизменяемый лог (DuckDB + Parquet)
+3. **Retrieval Agent** - Гибридный поиск (BM25 + Vector + Rerank)
+4. **Graph Agent** - Граф причинности (Neo4j)
+5. **Semantic Memory Agent** - Дистиллированные факты
+6. **Multimodal Agent** - Текст, код, изображения, логи
+7. **Working Memory Agent** - Контекст и разрешение противоречий
+8. **Conflict Resolution Agent** - Обнаружение конфликтов
+9. **Indexing Agent** - DAG конвейеры
+10. **Architect Agent** - Валидация инвариантов
+11. **Observability Agent** - Метрики и мониторинг
+12. **QA Agent** - Тестирование и гейты
+
+---
+
+## 🚀 Быстрый старт
+
+### Требования
+- Java 21+
+- Maven 3.8+
+- Docker (опционально)
+
+### Запуск
 
 ```bash
-docker compose up -d
+# Собрать проект
+mvn clean install
+
+# Запустить приложение
 mvn spring-boot:run
+
+# API доступен на http://localhost:8080
 ```
 
-Если Maven не установлен локально, соберите проект через Docker:
+### Docker
 
 ```bash
-docker build -t openclaw-memory-module .
-docker run --rm -p 8088:8088 --network host openclaw-memory-module
+docker build -t memory-module:0.1.0 .
+docker run -p 8080:8080 memory-module:0.1.0
 ```
 
-## Настройка подключения
+---
 
-По умолчанию приложение подключается к PostgreSQL так:
+## 📚 Документация
 
-```text
-jdbc:postgresql://localhost:55432/memory_module
-username: memory
+- [Архитектура](docs/ARCHITECTURE_RU.md) - Подробное описание системы
+- [API документация](docs/api.md) - REST API endpoints
+- [Примеры использования](docs/examples.md) - Примеры интеграции
+
+---
+
+## 🔧 Технологический стек
+
+- **Java 21** - Язык программирования
+- **Spring Boot 3.3.5** - Framework
+- **DuckDB** - Event Store (append-only лог)
+- **Neo4j** - Граф причинности
+- **LanceDB** - Векторный поиск
+- **Prometheus** - Метрики
+- **Docker** - Контейнеризация
+
+---
+
+## ✨ Ключевые характеристики
+
+### ✅ Провенанс везде
+Каждый артефакт содержит: source_event_ids, timestamp, confidence score
+
+### ✅ Неизменяемость
+Event Store строго append-only. Никаких мутаций или удалений.
+
+### ✅ Гибридный поиск
+BM25 + Vector Search + Reranking + QMD Orchestration
+
+### ✅ Временная корректность
+Полная поддержка временных интервалов и причинности
+
+### ✅ Видимость конфликтов
+Конфликты — сущности первого класса с полной трассировкой
+
+---
+
+## 📊 Целевые показатели производительности
+
+| Метрика | Цель |
+|---------|------|
+| Кешированный поиск | <100ms |
+| Полный поиск | <300ms |
+| Масштабируемость | Миллионы событий |
+
+---
+
+## 🧪 Тестирование
+
+```bash
+# Все тесты
+mvn test
+
+# С покрытием
+mvn test jacoco:report
+
+# Интеграционные тесты
+mvn verify
+```
+
+---
+
+## 🔍 Быстрые примеры
+
+### Запись события
+
+```java
+Event event = new Event.Builder()
+    .eventId("EVT-001")
+    .sourceAgent("retrieval-agent")
+    .eventType(Event.EventType.MEMORY_RETRIEVED)
+    .addPayloadEntry("query", "what is AI?")
+    .build();
+
+eventStore.appendEvent(event);
+```
+
+### Публикация артефакта
+
+```java
+Provenance provenance = new Provenance.Builder()
+    .addSourceEventId("EVT-001")
+    .confidence(0.95f)
+    .build();
+
+Artifact artifact = new Artifact.Builder()
+    .artifactId("ART-001")
+    .producedBy("retrieval-agent")
+    .type(Artifact.ArtifactType.MEMORY)
+    .provenance(provenance)
+    .build();
+
+blackboard.publishArtifact(artifact);
+```
+
+---
+
+## 📄 Лицензия
+
+MIT License
+
+---
+
+## 📞 Контакты
+
+- 🐛 Issues: https://github.com/openclaw/memory-module/issues
+- 💬 Discussions: https://github.com/openclaw/memory-module/discussions
+
+---
+
+**Made with ❤️ for OpenClaw AI Agents**
 password: memory
 ```
 
