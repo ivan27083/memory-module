@@ -215,10 +215,17 @@ public class IncrementalIndexingEngine {
     @Data
     public static class IndexingResult {
         public String artifactId;
-        public Map<String, StageOutput> outputs;
+        public Map<String, StageOutput> outputs = new LinkedHashMap<>();
         public long totalTimeMs;
         public boolean cached;
         public long cacheTimeMs;
+
+        public IndexingResult() {
+        }
+
+        public IndexingResult(String artifactId) {
+            this.artifactId = artifactId;
+        }
     }
     
     @Data
@@ -240,6 +247,16 @@ public class IncrementalIndexingEngine {
         public String inputHash;
         public Map<String, StageOutput> outputs;
         public long computedAt;
+
+        public CacheEntry() {
+        }
+
+        public CacheEntry(String artifactId, String inputHash, Map<String, StageOutput> outputs, long computedAt) {
+            this.artifactId = artifactId;
+            this.inputHash = inputHash;
+            this.outputs = outputs;
+            this.computedAt = computedAt;
+        }
     }
     
     @Data

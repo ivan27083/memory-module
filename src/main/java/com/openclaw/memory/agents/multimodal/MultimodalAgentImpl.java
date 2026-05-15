@@ -1,18 +1,21 @@
 package com.openclaw.memory.agents.multimodal;
 
+import com.openclaw.memory.agents.BaseAgent.AgentMetrics;
+import com.openclaw.memory.agents.BaseAgent.AgentStatus;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.data.embedding.Embedding;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
-import com.openclaw.memory.agents.BaseAgent;
 import com.openclaw.memory.blackboard.Artifact;
+import com.openclaw.memory.blackboard.Task;
 import com.openclaw.memory.blackboard.MemoryBlackboard;
 
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -32,7 +35,7 @@ import java.util.stream.Collectors;
  * @author Memory Module Team
  */
 @Slf4j
-public class MultimodalAgentImpl implements MultimodalAgent, BaseAgent {
+public class MultimodalAgentImpl implements MultimodalAgent {
     
     private final MemoryBlackboard blackboard;
     private final EmbeddingModel embeddingModel;
@@ -61,6 +64,127 @@ public class MultimodalAgentImpl implements MultimodalAgent, BaseAgent {
         log.info("MultimodalAgentImpl initialized");
     }
     
+
+    @Override
+    public String getName() {
+        return "MultimodalAgent";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Processes text documents, images, code, and logs into unified multimodal embeddings.";
+    }
+
+    public String getAgentName() {
+        return getName();
+    }
+
+    public String getAgentType() {
+        return "MULTIMODAL";
+    }
+
+    @Override
+    public void initialize() {
+        log.info("MultimodalAgent initialization complete");
+    }
+
+    @Override
+    public void shutdown() {
+        documentCache.clear();
+        imageCache.clear();
+        codeCache.clear();
+        logCache.clear();
+        log.info("MultimodalAgent shutdown complete");
+    }
+
+    @Override
+    public boolean canHandle(Task task) {
+        if (task == null) {
+            return false;
+        }
+        String objective = task.getObjective() == null ? "" : task.getObjective().toLowerCase(Locale.ROOT);
+        return "MULTIMODAL".equalsIgnoreCase(task.getAgent())
+                || getName().equalsIgnoreCase(task.getAgent())
+                || objective.contains("multimodal")
+                || objective.contains("document")
+                || objective.contains("image")
+                || objective.contains("code")
+                || objective.contains("log");
+    }
+
+    @Override
+    public CompletableFuture<List<Artifact>> executeTask(Task task) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                if (task.getStatus() == Task.TaskStatus.PENDING) {
+                    task.markInProgress();
+                }
+                List<Artifact> outputs = new ArrayList<>();
+                for (String input : task.getInputs()) {
+                    Artifact artifact = processInputAsArtifact(input);
+                    if (artifact != null) {
+                        outputs.add(artifact);
+                        blackboard.publishArtifact(artifact);
+                    }
+                }
+                task.markComplete(outputs.stream().map(Artifact::getArtifactId).toList());
+                return outputs;
+            } catch (Exception e) {
+                handleFailure(task, e);
+                return List.of();
+            }
+        });
+    }
+
+    private Artifact processInputAsArtifact(String path) {
+        Object result;
+        String contentType;
+        String lower = path.toLowerCase(Locale.ROOT);
+        if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".gif")) {
+            result = processImage(path);
+            contentType = "image_embedding";
+        } else if (lower.endsWith(".java") || lower.endsWith(".py") || lower.endsWith(".js") || lower.endsWith(".ts") || lower.endsWith(".cpp")) {
+            result = processCode(path);
+            contentType = "code_embedding";
+        } else if (lower.endsWith(".log")) {
+            result = processLogs(path);
+            contentType = "log_embedding";
+        } else {
+            result = processDocument(path);
+            contentType = "document_embedding";
+        }
+        if (result == null) {
+            return null;
+        }
+        return new Artifact.Builder()
+                .artifactId("multimodal-" + UUID.randomUUID())
+                .producedBy(getName())
+                .type(Artifact.ArtifactType.MEMORY)
+                .contentType(contentType)
+                .contentText(result.toString())
+                .metadata(Map.of("sourcePath", path))
+                .build();
+    }
+
+    @Override
+    public void handleFailure(Task task, Exception error) {
+        log.error("Multimodal task failed: {}", task == null ? "<null>" : task.getId(), error);
+        if (task != null && task.getStatus() != Task.TaskStatus.FAILED) {
+            task.markFailed(error.getMessage());
+        }
+    }
+
+    @Override
+    public AgentStatus getStatus() {
+        return AgentStatus.READY;
+    }
+
+    @Override
+    public AgentMetrics getMetrics() {
+        int processed = documentCache.size() + imageCache.size() + codeCache.size() + logCache.size();
+        return new AgentMetrics(processed, 0, 0L, 1.0, 0L);
+    }
+
     @Override
     public DocumentEmbedding processDocument(String documentPath) {
         log.info("Processing document: {}", documentPath);
@@ -220,7 +344,7 @@ public class MultimodalAgentImpl implements MultimodalAgent, BaseAgent {
             // Extract anomalies (errors, exceptions, warnings)
             List<String> anomalies = extractAnomalies(content);
             
-            LogEmbedding log = new LogEmbedding(
+            LogEmbedding logEmbedding = new LogEmbedding(
                 logId,
                 logPath,
                 embeddingVector,
@@ -228,11 +352,11 @@ public class MultimodalAgentImpl implements MultimodalAgent, BaseAgent {
                 anomalies
             );
             
-            logCache.put(logPath, log);
+            logCache.put(logPath, logEmbedding);
             log.info("Logs processed: {} events, {} anomalies",
                     parsedEvents.size(), anomalies.size());
             
-            return log;
+            return logEmbedding;
             
         } catch (Exception e) {
             log.error("Error processing logs: {}", logPath, e);
@@ -442,26 +566,4 @@ public class MultimodalAgentImpl implements MultimodalAgent, BaseAgent {
         return (float) (dotProduct / (Math.sqrt(normA) * Math.sqrt(normB)));
     }
     
-    @Override
-    public String getAgentName() {
-        return "MultimodalAgent";
-    }
-    
-    @Override
-    public String getAgentType() {
-        return "MULTIMODAL";
-    }
-    
-    @Override
-    public void initialize() {
-        log.info("MultimodalAgent initialization complete");
-    }
-    
-    @Override
-    public void shutdown() {
-        log.info("MultimodalAgent shutdown: cached {} documents, {} images, " +
-                "{} code files, {} log files",
-                documentCache.size(), imageCache.size(), 
-                codeCache.size(), logCache.size());
-    }
 }

@@ -75,7 +75,7 @@
         <!-- Vector Search & LanceDB -->
         <dependency>
             <groupId>io.qdrant</groupId>
-            <artifactId>qdrant-client</artifactId>
+            <artifactId>client</artifactId>
             <version>1.11.0</version>
         </dependency>
 
