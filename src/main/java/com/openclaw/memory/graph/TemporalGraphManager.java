@@ -196,7 +196,9 @@ public class TemporalGraphManager {
     }
     
     private boolean isValidAtTime(TemporalEdge edge, LocalDateTime atTime) {
-        return !atTime.isBefore(edge.validFrom) && !atTime.isAfter(edge.validTo);
+        boolean startsBeforeOrAt = edge.validFrom == null || !atTime.isBefore(edge.validFrom);
+        boolean endsAfterOrAt = edge.validTo == null || !atTime.isAfter(edge.validTo);
+        return startsBeforeOrAt && endsAfterOrAt;
     }
     
     // ===== Data Models =====
@@ -245,8 +247,16 @@ public class TemporalGraphManager {
     public static class CausalChain {
         public String nodeId;
         public LocalDateTime atTime;
-        public Set<String> dependencies;
+        public Set<String> dependencies = new HashSet<>();
         public int depth;
+
+        public CausalChain() {
+        }
+
+        public CausalChain(String nodeId, LocalDateTime atTime) {
+            this.nodeId = nodeId;
+            this.atTime = atTime;
+        }
     }
     
     @Data
@@ -259,6 +269,13 @@ public class TemporalGraphManager {
     public static class GraphConsistencyReport {
         public LocalDateTime atTime;
         public List<Contradiction> contradictions = new ArrayList<>();
+
+        public GraphConsistencyReport() {
+        }
+
+        public GraphConsistencyReport(LocalDateTime atTime) {
+            this.atTime = atTime;
+        }
         
         public boolean isConsistent() {
             return contradictions.isEmpty();

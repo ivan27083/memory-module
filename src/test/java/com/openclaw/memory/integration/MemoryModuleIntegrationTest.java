@@ -12,6 +12,8 @@ import com.openclaw.memory.mcp.MCPMemoryToolsImpl;
 import com.openclaw.memory.retrieval.QMDRetrievalEngine;
 import com.openclaw.memory.working_memory.WorkingMemoryComposer;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
@@ -450,7 +452,24 @@ public class MemoryModuleIntegrationTest {
     
     private static class MockEmbeddingModel implements EmbeddingModel {
         @Override
-        public Embedding embed(String text) {
+        public Response<Embedding> embed(String text) {
+            return Response.from(randomEmbedding());
+        }
+
+        @Override
+        public Response<Embedding> embed(TextSegment textSegment) {
+            return Response.from(randomEmbedding());
+        }
+
+        @Override
+        public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+            List<Embedding> embeddings = textSegments.stream()
+                    .map(segment -> randomEmbedding())
+                    .toList();
+            return Response.from(embeddings);
+        }
+
+        private static Embedding randomEmbedding() {
             float[] vector = new float[384];
             for (int i = 0; i < vector.length; i++) {
                 vector[i] = (float) Math.random();
@@ -461,7 +480,30 @@ public class MemoryModuleIntegrationTest {
     
     private static class MockForgetSystem extends com.openclaw.memory.storage.ForgetSystem {
         MockForgetSystem() {
-            super(10, 10, artifact -> artifact.getContent(), compressed -> null, artifact -> 1.0);
+            super(10, 10,
+                    new SemanticCompressor() {
+                        @Override
+                        public String compress(Artifact artifact) {
+                            return artifact.getContent();
+                        }
+
+                        @Override
+                        public Artifact decompress(CompressedMemory compressed) {
+                            return null;
+                        }
+                    },
+                    new ArchiveWriter() {
+                        @Override
+                        public String archive(Artifact artifact, String memoryId) {
+                            return memoryId;
+                        }
+
+                        @Override
+                        public Artifact read(String archiveReference) {
+                            return null;
+                        }
+                    },
+                    artifact -> 1.0);
         }
     }
 }
