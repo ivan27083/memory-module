@@ -314,8 +314,9 @@ public class MCPMemoryToolsImpl implements MCPMemoryTools.MCPToolImplementation 
         
         try {
             // Run forgetting via ForgetSystem
-            long archived = forgetSystem.runForgetCycle(percentileThreshold);
-            
+            ForgetSystem.ForgetCycleResult result = forgetSystem.runForgetCycle(percentileThreshold);
+            long archived = result.movedToTier2 + result.movedToTier3;
+
             log.info("Forget cycle completed: {} artifacts processed", archived);
             return archived;
             

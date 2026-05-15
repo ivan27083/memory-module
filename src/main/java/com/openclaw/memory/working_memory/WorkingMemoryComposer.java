@@ -30,6 +30,15 @@ public class WorkingMemoryComposer {
     private final int maxContextTokens;
     private final LocalDateTime currentTime;
     
+    public WorkingMemoryComposer(QMDRetrievalEngine retrievalEngine,
+                                com.openclaw.memory.graph.TemporalGraphManager graphManager,
+                                com.openclaw.memory.agents.conflict.ConflictResolutionAgent conflictAgent) {
+        this(retrievalEngine,
+             (memories, context) -> memories,
+             (artifact, atTime) -> graphManager == null || graphManager.isConsistent(artifact, atTime),
+             4000);
+    }
+
     public WorkingMemoryComposer(QMDRetrievalEngine retrievalEngine, 
                                 ConflictResolver conflictResolver,
                                 TemporalResolver temporalResolver,
@@ -106,6 +115,10 @@ public class WorkingMemoryComposer {
         );
     }
     
+    public WorkingMemoryContext composeContext(String query) {
+        return compose(query, new CompositionOptions());
+    }
+
     /**
      * Build causal chains linking memories
      */
@@ -198,6 +211,21 @@ public class WorkingMemoryComposer {
         private String composedPrompt;
         private Map<String, List<String>> causalChains;
         private CompositionMetadata metadata;
+
+        public WorkingMemoryContext(String originalQuery, List<SelectedMemory> selectedMemories,
+                                    String composedPrompt, Map<String, List<String>> causalChains,
+                                    CompositionMetadata metadata) {
+            this.originalQuery = originalQuery;
+            this.selectedMemories = selectedMemories;
+            this.composedPrompt = composedPrompt;
+            this.causalChains = causalChains;
+            this.metadata = metadata;
+        }
+
+        public List<SelectedMemory> getSelectedMemories() { return selectedMemories; }
+        public String getComposedPrompt() { return composedPrompt; }
+        public Map<String, List<String>> getCausalChains() { return causalChains; }
+        public CompositionMetadata getMetadata() { return metadata; }
     }
     
     @Data
@@ -229,6 +257,13 @@ public class WorkingMemoryComposer {
         public int maxMemoriesRequested;
         public int memoriesSelected;
         public long retrievalTimeMs;
+
+        public CompositionMetadata(long totalTimeMs, int maxMemoriesRequested, int memoriesSelected, long retrievalTimeMs) {
+            this.totalTimeMs = totalTimeMs;
+            this.maxMemoriesRequested = maxMemoriesRequested;
+            this.memoriesSelected = memoriesSelected;
+            this.retrievalTimeMs = retrievalTimeMs;
+        }
     }
     
     @Data

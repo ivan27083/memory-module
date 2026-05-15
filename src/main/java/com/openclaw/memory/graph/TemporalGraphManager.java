@@ -145,6 +145,10 @@ public class TemporalGraphManager {
         return report;
     }
     
+    public boolean isConsistent(com.openclaw.memory.blackboard.Artifact artifact, LocalDateTime atTime) {
+        return validateConsistency(atTime).contradictions.isEmpty();
+    }
+
     // ===== Private helpers =====
     
     private void traverseRecursive(String nodeId, LocalDateTime atTime,

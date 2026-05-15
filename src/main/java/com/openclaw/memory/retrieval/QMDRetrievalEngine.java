@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * QMD Retrieval Engine - Query Morphology Decomposition.
@@ -27,6 +28,20 @@ public class QMDRetrievalEngine {
     private final CrossEncoderReranker reranker;
     private final QueryDecomposer queryDecomposer;
     
+    public QMDRetrievalEngine() {
+        this((queries, topK) -> List.of(), (queries, topK) -> List.of(), (queries, topK) -> List.of(),
+             (candidates, query, topN) -> candidates.stream().limit(topN).collect(Collectors.toList()),
+             query -> {
+                 QueryMorphology morphology = new QueryMorphology();
+                 morphology.originalQuery = query;
+                 morphology.lexicalQueries = List.of(query);
+                 morphology.vectorQueries = List.of(query);
+                 morphology.expandedQueries = List.of(query);
+                 morphology.hypotheses = List.of();
+                 return morphology;
+             });
+    }
+
     public QMDRetrievalEngine(BM25Retriever bm25, VectorRetriever vector, 
                             GraphRetriever graph, CrossEncoderReranker reranker,
                             QueryDecomposer decomposer) {
@@ -71,6 +86,34 @@ public class QMDRetrievalEngine {
         );
     }
     
+    /**
+     * Compatibility search facade used by MCP adapters and tests.
+     */
+    public List<com.openclaw.memory.domain.model.RetrievalResult> search(String query, int topK, double confidenceThreshold) {
+        RetrievalOptions options = new RetrievalOptions();
+        options.topK = topK;
+        options.topN = topK;
+        return retrieve(query, options).results.stream()
+            .filter(candidate -> candidate.finalScore >= confidenceThreshold || candidate.getScore() >= confidenceThreshold)
+            .limit(topK)
+            .map(candidate -> new com.openclaw.memory.domain.model.RetrievalResult(
+                    toUuid(candidate.artifactId),
+                    com.openclaw.memory.domain.model.MemoryType.VECTOR,
+                    candidate.artifact == null ? "" : candidate.artifact.getContent(),
+                    candidate.finalScore > 0 ? candidate.finalScore : candidate.getScore(),
+                    Map.of("artifactId", candidate.artifactId),
+                    java.time.Instant.now()))
+            .collect(Collectors.toList());
+    }
+
+    private static java.util.UUID toUuid(String value) {
+        try {
+            return java.util.UUID.fromString(value);
+        } catch (Exception ignored) {
+            return java.util.UUID.nameUUIDFromBytes(String.valueOf(value).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
     /**
      * Reciprocal Rank Fusion - combines multiple ranker outputs
      */
@@ -152,6 +195,12 @@ public class QMDRetrievalEngine {
         public List<RankedCandidate> results;
         public RetrievalExplanation explanation;
         public long elapsedMs;
+
+        public RetrievalResults(List<RankedCandidate> results, RetrievalExplanation explanation, long elapsedMs) {
+            this.results = results;
+            this.explanation = explanation;
+            this.elapsedMs = elapsedMs;
+        }
     }
     
     @Data
@@ -160,6 +209,14 @@ public class QMDRetrievalEngine {
         public List<RankedCandidate> fusedResults;
         public List<RankedCandidate> finalResults;
         public long totalTimeMs;
+
+        public RetrievalExplanation(QueryMorphology queryMorphology, List<RankedCandidate> fusedResults,
+                                    List<RankedCandidate> finalResults, long totalTimeMs) {
+            this.queryMorphology = queryMorphology;
+            this.fusedResults = fusedResults;
+            this.finalResults = finalResults;
+            this.totalTimeMs = totalTimeMs;
+        }
     }
     
     // ===== Subcomponents (interfaces) =====
