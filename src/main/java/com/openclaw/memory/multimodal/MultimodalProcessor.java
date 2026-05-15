@@ -193,6 +193,13 @@ public class MultimodalProcessor {
         public List<ProcessedContent> contents = new ArrayList<>();
         public double[] fusedEmbedding;
         public Map<String, Object> crossModalRelations = new HashMap<>();
+
+        public MultimodalAnalysis() {
+        }
+
+        public MultimodalAnalysis(String contentId) {
+            this.contentId = contentId;
+        }
     }
     
     public enum ContentType {
