@@ -151,13 +151,13 @@ public class EventStoreAgentImpl implements BaseAgent {
             // Получить события из входных артефактов
             List<Event> eventsToRecord = new ArrayList<>();
             for (String artifactId : task.getInputs()) {
-                Artifact artifact = blackboard.getArtifact(artifactId);
+                Artifact artifact = blackboard.getArtifact(artifactId).orElse(null);
                 if (artifact != null) {
                     Event event = new Event.Builder()
                             .eventId("EVT-" + UUID.randomUUID())
                             .sourceAgent(artifact.getProducedBy())
                             .eventType(Event.EventType.MEMORY_RECORDED)
-                            .payload(new HashMap<>(artifact.getContent()))
+                            .payload(new HashMap<>(artifact.getContentMap()))
                             .build();
                     eventsToRecord.add(event);
                 }

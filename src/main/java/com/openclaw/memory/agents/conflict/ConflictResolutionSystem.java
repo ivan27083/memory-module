@@ -186,8 +186,7 @@ public class ConflictResolutionSystem {
         
         // Temporal proximity increases severity
         long timeDiff = Math.abs(
-            mem1.artifact.getTimestamp().getTime() - 
-            mem2.artifact.getTimestamp().getTime()
+            java.time.Duration.between(mem1.artifact.getTimestamp(), mem2.artifact.getTimestamp()).toMillis()
         );
         double temporalFactor = 1.0 / (1.0 + timeDiff / 3600000.0); // Decay over hours
         

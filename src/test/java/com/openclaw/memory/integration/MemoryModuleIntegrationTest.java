@@ -11,6 +11,7 @@ import com.openclaw.memory.mcp.MCPMemoryTools;
 import com.openclaw.memory.mcp.MCPMemoryToolsImpl;
 import com.openclaw.memory.retrieval.QMDRetrievalEngine;
 import com.openclaw.memory.working_memory.WorkingMemoryComposer;
+import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeEach;
@@ -433,7 +434,7 @@ public class MemoryModuleIntegrationTest {
     
     // Mock implementations
     
-    private static class MockQMDRetrievalEngine implements QMDRetrievalEngine {
+    private static class MockQMDRetrievalEngine extends QMDRetrievalEngine {
         private final MemoryBlackboard blackboard;
         
         MockQMDRetrievalEngine(MemoryBlackboard blackboard) {
@@ -458,9 +459,9 @@ public class MemoryModuleIntegrationTest {
         }
     }
     
-    private static class MockForgetSystem {
-        public long runForgetCycle(int percentile) {
-            return 0;
+    private static class MockForgetSystem extends com.openclaw.memory.storage.ForgetSystem {
+        MockForgetSystem() {
+            super(10, 10, artifact -> artifact.getContent(), compressed -> null, artifact -> 1.0);
         }
     }
 }

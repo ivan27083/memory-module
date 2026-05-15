@@ -34,7 +34,7 @@ public class MemoryBlackboard {
     private volatile long totalTasksProcessed = 0;
     private volatile long totalArtifactsCreated = 0;
     
-    private MemoryBlackboard() {}
+    public MemoryBlackboard() {}
     
     public static MemoryBlackboard getInstance() {
         return INSTANCE;
@@ -119,8 +119,26 @@ public class MemoryBlackboard {
     /**
      * Получить артефакт по ID
      */
-    public Artifact getArtifact(String artifactId) {
-        return artifacts.get(artifactId);
+    public Optional<Artifact> getArtifact(String artifactId) {
+        return Optional.ofNullable(artifacts.get(artifactId));
+    }
+
+    /**
+     * Backwards-compatible alias for publishArtifact.
+     */
+    public Artifact storeArtifact(Artifact artifact) {
+        return publishArtifact(artifact);
+    }
+
+    /**
+     * Applies an in-place metadata/provenance update to an artifact.
+     */
+    public synchronized void updateArtifact(String artifactId, java.util.function.Function<Artifact, ?> updater) {
+        Artifact artifact = artifacts.get(artifactId);
+        if (artifact == null) {
+            throw new NoSuchElementException("Artifact not found: " + artifactId);
+        }
+        updater.apply(artifact);
     }
     
     /**

@@ -16,4 +16,14 @@ public record RetrievalResult(
         metadata = metadata == null ? Map.of() : Map.copyOf(metadata);
         createdAt = createdAt == null ? Instant.now() : createdAt;
     }
+
+    public String getMemoryId() {
+        Object artifactId = metadata.get("artifactId");
+        return artifactId == null ? sourceId.toString() : artifactId.toString();
+    }
+
+    public double getScore() {
+        return score;
+    }
 }
+
