@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${SERVER_PORT:8088}
 
 spring:
   application:
@@ -8,9 +8,9 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     show-sql: false
   datasource:
-    url: ${MEMORY_DB_URL:jdbc:postgresql://localhost:5432/memory_module}
+    url: ${MEMORY_DB_URL:jdbc:postgresql://localhost:55432/memory_module}
     username: ${MEMORY_DB_USERNAME:memory}
-    password: ${MEMORY_DB_PASSWORD:memory123}
+    password: ${MEMORY_DB_PASSWORD:memory}
     driver-class-name: org.postgresql.Driver
   data:
     redis:
@@ -28,9 +28,9 @@ management:
   endpoint:
     health:
       show-details: always
-  metrics:
-    export:
-      prometheus:
+  prometheus:
+    metrics:
+      export:
         enabled: true
 
 logging:
@@ -44,8 +44,25 @@ logging:
   file:
     name: logs/memory-module.log
 
-# MACMR Configuration
 memory:
+  # Runtime Retrieval Configuration
+  working-ttl: ${MEMORY_WORKING_TTL:PT24H}
+  retrieval-limit: ${MEMORY_RETRIEVAL_LIMIT:12}
+
+  http:
+    connect-timeout: ${MEMORY_HTTP_CONNECT_TIMEOUT:PT3S}
+    read-timeout: ${MEMORY_HTTP_READ_TIMEOUT:PT20S}
+
+  vector:
+    collection: ${MEMORY_QDRANT_COLLECTION:agent_memory}
+    dimensions: ${MEMORY_VECTOR_DIMENSIONS:768}
+    qdrant-url: ${MEMORY_QDRANT_URL:http://localhost:6333}
+
+  embedding:
+    base-url: ${MEMORY_EMBEDDING_BASE_URL:http://localhost:1234/v1}
+    model: ${MEMORY_EMBEDDING_MODEL:text-embedding-granite-embedding-278m-multilingual}
+    api-key: ${MEMORY_EMBEDDING_API_KEY:local}
+
   module:
     # Event Store Configuration
     event-store:
@@ -53,13 +70,13 @@ memory:
       max-events: ${EVENT_STORE_MAX:1000000}
       export-parquet: ${EVENT_STORE_PARQUET:false}
       cleanup-interval-hours: 24
-    
+
     # Blackboard Configuration
     blackboard:
       max-tasks: ${BLACKBOARD_MAX_TASKS:10000}
       max-artifacts: ${BLACKBOARD_MAX_ARTIFACTS:100000}
       cleanup-interval-hours: 24
-    
+
     # Agents Configuration
     agents:
       orchestrator:
@@ -74,30 +91,15 @@ memory:
       graph:
         max-nodes: 100000
         max-edges: 500000
-    
+
     # Performance Configuration
     performance:
       thread-pool-size: ${THREAD_POOL_SIZE:16}
       queue-capacity: 1000
       metric-collection-enabled: true
-    
+
     # Security Configuration
     security:
       provenance-required: true
       append-only-enforced: true
       conflict-tracking-enabled: true
-    
-    # Retrieval Configuration (Legacy - for compatibility)
-    working-ttl: ${MEMORY_WORKING_TTL:PT24H}
-    retrieval-limit: ${MEMORY_RETRIEVAL_LIMIT:12}
-    http:
-      connect-timeout: ${MEMORY_HTTP_CONNECT_TIMEOUT:PT3S}
-      read-timeout: ${MEMORY_HTTP_READ_TIMEOUT:PT20S}
-    vector:
-      collection: ${MEMORY_QDRANT_COLLECTION:agent_memory}
-      dimensions: ${MEMORY_VECTOR_DIMENSIONS:768}
-      qdrant-url: ${MEMORY_QDRANT_URL:http://localhost:6333}
-    embedding:
-      base-url: ${MEMORY_EMBEDDING_BASE_URL:http://localhost:1234/v1}
-      model: ${MEMORY_EMBEDDING_MODEL:text-embedding-granite-embedding-278m-multilingual}
-    api-key: ${MEMORY_EMBEDDING_API_KEY:local}

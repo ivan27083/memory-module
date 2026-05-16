@@ -262,7 +262,9 @@ function extractLatestUserText(event) {
   return "";
 }
 
-export default {
+import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
+
+export default definePluginEntry({
   id: "memory-module-http",
   name: "Memory Module HTTP",
   description: "Integrates OpenClaw agent turns with the external Spring Boot memory-module.",
@@ -272,8 +274,8 @@ export default {
   },
   register(api) {
     api.registerTool((ctx) => createRetrieveTool(api, ctx), { name: "memory_module_retrieve" });
-    api.registerTool((ctx) => createWriteTool(api, ctx), { name: "memory_module_write" });
-    api.registerTool((ctx) => createRagIngestTool(api, ctx), { name: "memory_module_rag_ingest" });
+    api.registerTool((ctx) => createWriteTool(api, ctx), { name: "memory_module_write" }, { optional: true });
+    api.registerTool((ctx) => createRagIngestTool(api, ctx), { name: "memory_module_rag_ingest" }, { optional: true });
 
     api.on("before_prompt_build", async (event, ctx) => {
       const config = resolveConfig(api);
@@ -323,4 +325,4 @@ export default {
       }
     }, { timeoutMs: 7000 });
   }
-};
+});

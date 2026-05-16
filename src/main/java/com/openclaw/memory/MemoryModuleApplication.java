@@ -7,6 +7,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ConfigurableApplicationContext;
 
 /**
  * Memory Module Application - Multi-Agent Cognitive Memory Runtime (MACMR)
@@ -33,11 +34,12 @@ public class MemoryModuleApplication {
         logger.info("Starting Memory Module - Multi-Agent Cognitive Memory Runtime");
         logger.info("Documentation: docs/ARCHITECTURE_RU.md");
         logger.info("Contributing: CONTRIBUTING.md");
-        
-        SpringApplication.run(MemoryModuleApplication.class, args);
-        
+
+        ConfigurableApplicationContext applicationContext = SpringApplication.run(MemoryModuleApplication.class, args);
+        String port = applicationContext.getEnvironment().getProperty("local.server.port", "8088");
+
         logger.info("Memory Module started successfully");
-        logger.info("API available at: http://localhost:8080");
-        logger.info("Metrics available at: http://localhost:8080/actuator/prometheus");
+        logger.info("API available at: http://localhost:{}", port);
+        logger.info("Metrics available at: http://localhost:{}/actuator/prometheus", port);
     }
 }

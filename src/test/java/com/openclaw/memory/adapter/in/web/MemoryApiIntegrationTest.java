@@ -7,55 +7,59 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.test.web.reactive.server.WebTestClient;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.*;
 
-import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Интеграционные тесты для HTTP API модуля памяти.
+ * Исправлено: /rag/ingest возвращает List, а не Map.
+ */
 @SpringBootTest(classes = MemoryModuleApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@AutoConfigureTestRestTemplate
 @DisplayName("Memory API Integration Tests")
 public class MemoryApiIntegrationTest {
 
     @Autowired
-    private WebClient webClient;
+    private TestRestTemplate restTemplate;
 
     @Autowired
     private MemoryFacade memoryFacade;
+
+    @LocalServerPort
+    private int port;
+
+    private String baseUrl;
 
     private String agentId = "test-agent";
     private String sessionId = "test-session";
 
     @BeforeEach
     void setUp() {
-        // Очистка (если нужно)
-        // memoryFacade.clear(); // если есть такой метод
+        baseUrl = "http://localhost:" + port;
     }
 
     @Test
     @DisplayName("Память: сохранение и поиск")
     void testMemory_WriteAndRetrieve() {
-        // Запись
+        // Запись через facade
         MemoryWriteCommand writeCommand = new MemoryWriteCommand(
                 agentId,
                 sessionId,
-                MemoryType.FACT,
+                MemoryType.EPISODIC,
                 "Тестовая память о Java",
                 Map.of("lang", "ru")
         );
 
         MemoryRecord saved = memoryFacade.write(writeCommand);
         assertThat(saved).isNotNull();
-        assertThat(saved.getContent()).contains("Java");
+        assertThat(saved.content()).contains("Java");
 
         // Поиск
         RetrievalQuery query = new RetrievalQuery(
@@ -68,74 +72,87 @@ public class MemoryApiIntegrationTest {
 
         var results = memoryFacade.retrieve(query);
         assertThat(results).isNotEmpty();
-        assertThat(results.get(0).getContent()).contains("Java");
+        assertThat(results.get(0).content()).contains("Java");
     }
 
     @Test
     @DisplayName("RAG: загрузка документа (summarization)")
     void testRag_IngestDocument() {
-        // Имитация загрузки документа
-        var request = Map.of(
+        // Запрос
+        Map<String, Object> request = Map.of(
                 "source", "user-upload",
                 "title", "Введение в Spring Boot",
                 "content", "Spring Boot — фреймворк для быстрой разработки на Java. Упрощает настройку и развертывание приложений."
         );
 
-        ResponseEntity<DocumentChunk[]> response = webClient.post()
-                .uri("/rag/ingest")
-                .body(Mono.just(request), Map.class)
-                .retrieve()
-                .onStatus(HttpStatus::isError, clientResponse ->
-                        clientResponse.bodyToMono(String.class)
-                                .flatMap(error -> Mono.error(new RuntimeException("Error: " + error))))
-                .toEntity(DocumentChunk[].class)
-                .block();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+
+        // ✅ Исправлено: ожидаем List, а не Map
+        ResponseEntity<List> response = restTemplate.exchange(
+                baseUrl + "/api/rag/ingest",
+                HttpMethod.POST,
+                entity,
+                new ParameterizedTypeReference<List>() {}
+        );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotEmpty();
-        assertThat(response.getBody()[0].getContent()).contains("Spring Boot");
+
+        // Проверим первый элемент
+        Map<String, Object> firstChunk = (Map<String, Object>) response.getBody().get(0);
+        assertThat(firstChunk).isNotNull();
+        assertThat(firstChunk.get("content")).toString().contains("Spring Boot");
     }
 
     @Test
     @DisplayName("Memory: проверка MCP-подобного поведения через API")
     void testMcpStyleCalls() {
-        // MCP — это скорее интерфейс, но мы тестируем его поведение
-
         // 1. Сохранение
-        var writeReq = Map.of(
+        Map<String, Object> writeReq = Map.of(
                 "agentId", agentId,
                 "sessionId", sessionId,
-                "type", "FACT",
+                "type", "EPISODIC",
                 "content", "Пользователь любит Kotlin"
         );
 
-        ResponseEntity<MemoryRecord> writeRes = webClient.post()
-                .uri("/api/memory/write")
-                .body(Mono.just(writeReq), Map.class)
-                .retrieve()
-                .toEntity(MemoryRecord.class)
-                .block();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<Map<String, Object>> writeEntity = new HttpEntity<>(writeReq, headers);
+
+        ResponseEntity<MemoryRecord> writeRes = restTemplate.postForEntity(
+                baseUrl + "/api/memory/write",
+                writeEntity,
+                MemoryRecord.class
+        );
 
         assertThat(writeRes.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(writeRes.getBody()).isNotNull();
+        assertThat(writeRes.getBody().content()).contains("Kotlin");
 
         // 2. Поиск
-        var retrieveReq = Map.of(
+        Map<String, Object> retrieveReq = Map.of(
                 "agentId", agentId,
                 "sessionId", sessionId,
                 "prompt", "Что я знаю о предпочтениях пользователя?",
                 "limit", 5
         );
 
-        ResponseEntity<RetrievalResult[]> retrieveRes = webClient.post()
-                .uri("/api/memory/retrieve")
-                .body(Mono.just(retrieveReq), Map.class)
-                .retrieve()
-                .toEntity(RetrievalResult[].class)
-                .block();
+        HttpEntity<Map<String, Object>> retrieveEntity = new HttpEntity<>(retrieveReq, headers);
+
+        ResponseEntity<List<Map<String, Object>>> retrieveRes = restTemplate.exchange(
+                baseUrl + "/api/memory/retrieve",
+                HttpMethod.POST,
+                retrieveEntity,
+                new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+        );
 
         assertThat(retrieveRes.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(retrieveRes.getBody()).isNotEmpty();
-        assertThat(retrieveRes.getBody()[0].getContent()).contains("Kotlin");
+        assertThat(((Map) retrieveRes.getBody().get(0)).get("content"))
+                .toString().contains("Kotlin");
     }
 }
