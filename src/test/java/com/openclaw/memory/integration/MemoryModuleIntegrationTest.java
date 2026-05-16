@@ -9,7 +9,7 @@ import com.openclaw.memory.domain.model.RetrievalResult;
 import com.openclaw.memory.graph.TemporalGraphManager;
 import com.openclaw.memory.mcp.MCPMemoryTools;
 import com.openclaw.memory.mcp.MCPMemoryToolsImpl;
-import com.openclaw.memory.retrieval.QMDRetrievalEngine;
+import com.openclaw.memory.retrieval.Retriever;
 import com.openclaw.memory.working_memory.WorkingMemoryComposer;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Timeout;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -51,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class MemoryModuleIntegrationTest {
     
     private MemoryBlackboard blackboard;
-    private QMDRetrievalEngine retrievalEngine;
+    private Retriever retriever;
     private TemporalGraphManager graphManager;
     private ConflictResolutionAgentImpl conflictAgent;
     private MultimodalAgentImpl multimodalAgent;
@@ -72,7 +73,7 @@ public class MemoryModuleIntegrationTest {
         conflictAgent = new ConflictResolutionAgentImpl(blackboard, graphManager);
         
         // Initialize retrieval engine (mock)
-        retrievalEngine = new MockQMDRetrievalEngine(blackboard);
+        retriever = new MockRetriever();
         
         // Initialize multimodal agent
         multimodalAgent = new MultimodalAgentImpl(blackboard, 
@@ -80,13 +81,11 @@ public class MemoryModuleIntegrationTest {
         
         // Initialize working memory composer
         workingMemoryComposer = new WorkingMemoryComposer(
-            retrievalEngine, graphManager, conflictAgent);
-        
-        // Initialize MCP implementation
+                retriever, graphManager, conflictAgent);
+
         mcpImpl = new MCPMemoryToolsImpl(
-            blackboard, retrievalEngine, conflictAgent, 
-            workingMemoryComposer, new MockForgetSystem()
-        );
+                blackboard, retriever, conflictAgent,
+                workingMemoryComposer, new MockForgetSystem());
     }
     
     // ===== EVENT SOURCING TESTS =====
@@ -433,20 +432,12 @@ public class MemoryModuleIntegrationTest {
         return new Artifact(id, content, "text", timestamp, provenance,
             new HashMap<>());
     }
-    
-    // Mock implementations
-    
-    private static class MockQMDRetrievalEngine extends QMDRetrievalEngine {
-        private final MemoryBlackboard blackboard;
-        
-        MockQMDRetrievalEngine(MemoryBlackboard blackboard) {
-            this.blackboard = blackboard;
-        }
-        
+
+    private static class MockRetriever implements Retriever {
         @Override
-        public List<RetrievalResult> search(String query, int topK, 
-                                           double confidenceThreshold) {
-            return Collections.emptyList();
+        public CompletableFuture<List<com.openclaw.memory.retrieval.RetrievalResult>> search(
+                String query, int topK) {
+            return CompletableFuture.completedFuture(Collections.emptyList());
         }
     }
     

@@ -83,6 +83,7 @@ memory:
         max-decomposition-depth: 5
         timeout-seconds: 300
       retrieval:
+        provider: ${RETRIEVAL_PROVIDER:qmd}
         cache-enabled: true
         cache-ttl-minutes: 60
         bm25-enabled: true

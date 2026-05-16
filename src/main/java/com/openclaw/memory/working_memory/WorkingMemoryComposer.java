@@ -3,6 +3,9 @@ package com.openclaw.memory.working_memory;
 import com.openclaw.memory.blackboard.Artifact;
 import com.openclaw.memory.blackboard.MemoryBlackboard;
 import com.openclaw.memory.retrieval.QMDRetrievalEngine;
+import com.openclaw.memory.retrieval.RetrievalResult;
+import com.openclaw.memory.retrieval.Retriever;
+
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,27 +26,27 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 public class WorkingMemoryComposer {
-    
-    private final QMDRetrievalEngine retrievalEngine;
+    public String content;
+    private final Retriever retriever;
     private final ConflictResolver conflictResolver;
     private final TemporalResolver temporalResolver;
     private final int maxContextTokens;
     private final LocalDateTime currentTime;
     
-    public WorkingMemoryComposer(QMDRetrievalEngine retrievalEngine,
+    public WorkingMemoryComposer(Retriever retriever,
                                 com.openclaw.memory.graph.TemporalGraphManager graphManager,
                                 com.openclaw.memory.agents.conflict.ConflictResolutionAgent conflictAgent) {
-        this(retrievalEngine,
+        this(retriever,
              (memories, context) -> memories,
              (artifact, atTime) -> graphManager == null || graphManager.isConsistent(artifact, atTime),
              4000);
     }
 
-    public WorkingMemoryComposer(QMDRetrievalEngine retrievalEngine, 
+    public WorkingMemoryComposer(Retriever retriever, 
                                 ConflictResolver conflictResolver,
                                 TemporalResolver temporalResolver,
                                 int maxContextTokens) {
-        this.retrievalEngine = retrievalEngine;
+        this.retriever = retriever;
         this.conflictResolver = conflictResolver;
         this.temporalResolver = temporalResolver;
         this.maxContextTokens = maxContextTokens;
@@ -59,38 +62,30 @@ public class WorkingMemoryComposer {
         log.info("Composing working memory for query: {}", query);
         
         // 1. Retrieve candidate memories
-        QMDRetrievalEngine.RetrievalResults retrievalResults = 
-            retrievalEngine.retrieve(query, createRetrievalOptions(options));
+        List<RetrievalResult> candidates =
+            retriever.search(query, options.maxCandidates).join();
         
         List<SelectedMemory> selectedMemories = new ArrayList<>();
         
-        // 2. Filter and rank for relevance
-        List<QMDRetrievalEngine.RankedCandidate> candidates = retrievalResults.results;
-        
-        for (QMDRetrievalEngine.RankedCandidate candidate : candidates) {
-            if (selectedMemories.size() >= options.maxMemoriesPerContext) {
-                break;
-            }
-            
-            // Check temporal validity
-            if (!temporalResolver.isValid(candidate.artifact, currentTime)) {
-                log.debug("Skipping memory {} - not valid at current time", candidate.artifactId);
+        for (RetrievalResult result : candidates) {
+            if (selectedMemories.size() >= options.maxMemoriesPerContext) break;
+
+            if (!temporalResolver.isValid(result.artifact(), currentTime)) {
+                log.debug("Skipping memory {} - not valid at current time", result.memoryId());
                 continue;
             }
-            
-            // Check confidence threshold
-            if (candidate.finalScore < options.confidenceThreshold) {
-                log.debug("Skipping memory {} - confidence below threshold", candidate.artifactId);
+            if (result.score() < options.confidenceThreshold) {
+                log.debug("Skipping memory {} - confidence below threshold", result.memoryId());
                 continue;
             }
-            
+
             SelectedMemory selected = new SelectedMemory(
-                candidate.artifact,
-                candidate.finalScore,
+                result.artifact(),
+                result.score(),
                 SelectionReason.RELEVANCE_MATCH,
-                candidate.artifactId
+                result.memoryId()
             );
-            selected.retrievalExplanation = candidate;
+            selected.retrievalExplanation = result;
             selectedMemories.add(selected);
         }
         
@@ -111,7 +106,7 @@ public class WorkingMemoryComposer {
             composedContext,
             causalChains,
             new CompositionMetadata(elapsed, options.maxMemoriesPerContext, 
-                                   resolvedMemories.size(), retrievalResults.elapsedMs)
+                                   resolvedMemories.size(), 0L)
         );
     }
     
@@ -171,7 +166,10 @@ public class WorkingMemoryComposer {
                 sb.append("- Timestamp: ").append(artifact.getProvenance().getTimestamp()).append("\n");
             }
             
-            sb.append("- Content: ").append(artifact.getContent()).append("\n\n");
+            String content = memory.artifact != null
+                ? memory.artifact.getContent()
+                : memory.content;
+            sb.append("- Content: ").append(content).append("\n\n");
             
             tokenCount += estimateTokens(artifact.getContent());
         }
@@ -192,14 +190,6 @@ public class WorkingMemoryComposer {
     private int estimateTokens(String text) {
         // Rough estimate: 1 token ≈ 4 characters
         return (text != null ? text.length() : 0) / 4;
-    }
-    
-    private QMDRetrievalEngine.RetrievalOptions createRetrievalOptions(CompositionOptions options) {
-        QMDRetrievalEngine.RetrievalOptions opts = new QMDRetrievalEngine.RetrievalOptions();
-        opts.topK = options.maxCandidates;
-        opts.topN = options.maxMemoriesPerContext;
-        opts.includeExplanation = options.includeExplanation;
-        return opts;
     }
     
     // ===== Data Models =====
@@ -234,7 +224,8 @@ public class WorkingMemoryComposer {
         public double relevanceScore;
         public SelectionReason selectionReason;
         public String artifactId;
-        public QMDRetrievalEngine.RankedCandidate retrievalExplanation;
+        public String content;
+        public RetrievalResult retrievalExplanation;
         
         public SelectedMemory(Artifact artifact, double score, SelectionReason reason, String id) {
             this.artifact = artifact;

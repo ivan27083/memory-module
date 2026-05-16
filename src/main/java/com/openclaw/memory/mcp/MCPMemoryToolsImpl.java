@@ -4,7 +4,7 @@ import com.openclaw.memory.blackboard.Artifact;
 import com.openclaw.memory.blackboard.MemoryBlackboard;
 import com.openclaw.memory.blackboard.Provenance;
 import com.openclaw.memory.domain.model.RetrievalResult;
-import com.openclaw.memory.retrieval.QMDRetrievalEngine;
+import com.openclaw.memory.retrieval.Retriever;
 import com.openclaw.memory.agents.conflict.ConflictResolutionAgent;
 import com.openclaw.memory.working_memory.WorkingMemoryComposer;
 import com.openclaw.memory.storage.ForgetSystem;
@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 public class MCPMemoryToolsImpl implements MCPMemoryTools.MCPToolImplementation {
     
     private final MemoryBlackboard blackboard;
-    private final QMDRetrievalEngine retrievalEngine;
+    private final Retriever retriever;
     private final ConflictResolutionAgent conflictAgent;
     private final WorkingMemoryComposer workingMemoryComposer;
     private final ForgetSystem forgetSystem;
@@ -47,12 +47,12 @@ public class MCPMemoryToolsImpl implements MCPMemoryTools.MCPToolImplementation 
     private long toolInvocations = 0;
     
     public MCPMemoryToolsImpl(MemoryBlackboard blackboard,
-                            QMDRetrievalEngine retrievalEngine,
+                            Retriever retriever,
                             ConflictResolutionAgent conflictAgent,
                             WorkingMemoryComposer workingMemoryComposer,
                             ForgetSystem forgetSystem) {
         this.blackboard = blackboard;
-        this.retrievalEngine = retrievalEngine;
+        this.retriever = retriever;
         this.conflictAgent = conflictAgent;
         this.workingMemoryComposer = workingMemoryComposer;
         this.forgetSystem = forgetSystem;
@@ -66,11 +66,18 @@ public class MCPMemoryToolsImpl implements MCPMemoryTools.MCPToolImplementation 
         
         try {
             // Use QMD engine for hybrid retrieval
-            List<RetrievalResult> results = retrievalEngine.search(
-                query,
-                options.topK,
-                options.confidenceThreshold
-            );
+            List<RetrievalResult> results = retriever.search(query, options.topK)
+                .join()
+                .stream()
+                .map(r -> new RetrievalResult(
+                    toUuid(r.memoryId()),
+                    com.openclaw.memory.domain.model.MemoryType.VECTOR,
+                    r.content(),
+                    r.score(),
+                    r.metadata(),
+                    java.time.Instant.now()
+                ))
+                .collect(Collectors.toList());
             
             // Filter by confidence if needed
             List<RetrievalResult> filtered = results.stream()
@@ -204,6 +211,15 @@ public class MCPMemoryToolsImpl implements MCPMemoryTools.MCPToolImplementation 
         }
     }
     
+    private static java.util.UUID toUuid(String value) {
+        try {
+            return java.util.UUID.fromString(value);
+        } catch (Exception ignored) {
+            return java.util.UUID.nameUUIDFromBytes(
+                value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
     @Override
     public List<Artifact> getTimeline(String query, LocalDateTime from, LocalDateTime to) {
         toolInvocations++;
@@ -212,12 +228,23 @@ public class MCPMemoryToolsImpl implements MCPMemoryTools.MCPToolImplementation 
         
         try {
             // Search and filter by temporal range
-            List<RetrievalResult> results = retrievalEngine.search(query, 100, 0.0f);
+            List<RetrievalResult> results = retriever.search(query, 100)
+                .join()
+                .stream()
+                .map(r -> new RetrievalResult(
+                    toUuid(r.memoryId()),
+                    com.openclaw.memory.domain.model.MemoryType.VECTOR,
+                    r.content(),
+                    r.score(),
+                    r.metadata(),
+                    java.time.Instant.now()
+                ))
+                .collect(Collectors.toList());
             
             List<Artifact> timeline = new ArrayList<>();
             
             for (RetrievalResult result : results) {
-                Optional<Artifact> artifact = blackboard.getArtifact(result.getMemoryId());
+                Optional<Artifact> artifact = blackboard.getArtifact(result.getMemoryId().toString());
                 
                 if (artifact.isPresent()) {
                     Artifact a = artifact.get();

@@ -2,10 +2,16 @@ package com.openclaw.memory.config;
 
 import com.openclaw.memory.blackboard.MemoryBlackboard;
 import com.openclaw.memory.event_store.*;
+import com.openclaw.memory.retrieval.QMDRetrievalEngine;
+import com.openclaw.memory.retrieval.QMDRetrieverAdapter;
+import com.openclaw.memory.config.RetrieverProperties;
+import com.openclaw.memory.retrieval.BlackboardRetriever;
+import com.openclaw.memory.retrieval.Retriever;
 import com.openclaw.memory.agents.orchestrator.*;
 import com.openclaw.memory.agents.event_store.EventStoreAgentImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,5 +69,23 @@ public class MemoryModuleConfiguration {
         agent.initialize();
         
         return agent;
+    }
+
+    @Bean
+    @Primary
+    public Retriever retriever(QMDRetrievalEngine engine,
+                            MemoryBlackboard blackboard,
+                            RetrieverProperties props) {
+
+        String provider = props.getProvider();
+        logger.info("Initializing Retriever: provider={}", provider);
+
+        if ("qmd".equalsIgnoreCase(provider)) {
+            logger.info("Using QMDRetrieverAdapter");
+            return new QMDRetrieverAdapter(engine);
+        }
+
+        logger.warn("Unknown provider '{}', falling back to BlackboardRetriever", provider);
+        return new BlackboardRetriever(blackboard);
     }
 }
