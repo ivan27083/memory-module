@@ -4,6 +4,7 @@ import com.openclaw.memory.blackboard.Artifact;
 import com.openclaw.memory.blackboard.Provenance;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -11,7 +12,7 @@ import java.util.stream.Stream;
 
 /**
  * QMD Retrieval Engine - Query Morphology Decomposition.
- * 
+ *
  * Implements hybrid retrieval pipeline:
  * 1. Query Decomposition (lex, vec, hyde, expand)
  * 2. Candidate Retrieval (BM25, vector, graph)
@@ -19,6 +20,7 @@ import java.util.stream.Stream;
  * 4. Reranking (cross-encoder)
  * 5. Explanation output
  */
+@Component
 @Slf4j
 public class QMDRetrievalEngine {
     

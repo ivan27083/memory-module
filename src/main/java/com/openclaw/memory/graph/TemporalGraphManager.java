@@ -1,14 +1,17 @@
 package com.openclaw.memory.graph;
 
+import com.openclaw.memory.domain.model.MemoryRecord;
+import com.openclaw.memory.domain.port.MemoryGraphPort;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
 
 /**
  * Temporal Graph Manager - Supports valid_from/valid_to for all edges.
- * 
+ *
  * Enables:
  * - Time-aware traversal
  * - Supersession chain tracking
@@ -16,7 +19,7 @@ import java.util.*;
  * - Belief revision history
  */
 @Slf4j
-public class TemporalGraphManager {
+public class TemporalGraphManager implements MemoryGraphPort {
     
     private final Map<String, TemporalNode> nodes = new HashMap<>();
     private final Map<String, List<TemporalEdge>> edges = new HashMap<>();
@@ -145,6 +148,35 @@ public class TemporalGraphManager {
         return report;
     }
     
+    // ── MemoryGraphPort ───────────────────────────────────────────────────────
+
+    @Override
+    public void addMemory(MemoryRecord record) {
+        addNode(record.id().toString(), NodeType.MEMORY, record);
+    }
+
+    @Override
+    public void recordSupersession(UUID oldId, UUID newId, Instant at) {
+        LocalDateTime validFrom = LocalDateTime.ofInstant(at, java.time.ZoneOffset.UTC);
+        addEdge(oldId.toString(), newId.toString(), EdgeType.SUPERSEDES, validFrom, null, 1.0);
+    }
+
+    @Override
+    public List<String> getSupersessionChain(String memoryId) {
+        return traverse(memoryId, LocalDateTime.now(), TraversalType.FORWARD, 50)
+                .stream()
+                .filter(id -> !id.equals(memoryId))
+                .toList();
+    }
+
+    @Override
+    public boolean isConsistent(String artifactId, LocalDateTime atTime) {
+        // Edge direction: oldId -[SUPERSEDES]-> newId (old was replaced by new).
+        // An artifact has been superseded when it has an outgoing SUPERSEDES edge.
+        return edges.getOrDefault(artifactId, List.of()).stream()
+                .noneMatch(e -> e.type == EdgeType.SUPERSEDES && isValidAtTime(e, atTime));
+    }
+
     public boolean isConsistent(com.openclaw.memory.blackboard.Artifact artifact, LocalDateTime atTime) {
         return validateConsistency(atTime).contradictions.isEmpty();
     }

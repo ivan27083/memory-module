@@ -14,7 +14,8 @@ public record MemoryModuleProperties(
         @Min(1) int retrievalLimit,
         @NotNull Http http,
         @NotNull Vector vector,
-        @NotNull Embedding embedding
+        @NotNull Embedding embedding,
+        @NotNull Maintenance maintenance
 ) {
     public record Http(
             @NotNull Duration connectTimeout,
@@ -33,6 +34,12 @@ public record MemoryModuleProperties(
             @NotBlank String baseUrl,
             @NotBlank String model,
             @NotBlank String apiKey
+    ) {
+    }
+
+    public record Maintenance(
+            @NotNull Duration episodicRetention,
+            @NotBlank String cleanupCron
     ) {
     }
 }

@@ -1,13 +1,10 @@
 package com.openclaw.memory.retrieval;
 
 import com.openclaw.memory.blackboard.Artifact;
-import org.springframework.stereotype.Component;
-
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-@Component
 public class QMDRetrieverAdapter implements Retriever {
 
     private final QMDRetrievalEngine engine;

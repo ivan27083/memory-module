@@ -1,0 +1,18 @@
+{
+  "name": "qmd-server",
+  "version": "1.0.0",
+  "description": "HTTP sidecar exposing @tobilu/qmd to the Java memory-module",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@tobilu/qmd": "latest",
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

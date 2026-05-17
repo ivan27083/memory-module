@@ -55,7 +55,9 @@ public class RetrievalOrchestrator {
         validate(query);
 
         int finalLimit = Math.max(query.limit(), 1);
-        int sourceLimit = finalLimit;
+        // Fetch more candidates than needed so metadata filtering doesn't starve the result set
+        int sourceLimit = Math.max(finalLimit * 5, 50);
+
         List<RetrievalResult> candidates = new ArrayList<>();
         addSource("working memory", candidates, () ->
                 asResults(workingMemoryStore.findRecent(query.agentId(), query.sessionId(), sourceLimit), 0.95));
@@ -68,9 +70,37 @@ public class RetrievalOrchestrator {
         addSource("external RAG", candidates, () ->
                 externalKnowledgeRetriever.retrieve(query));
 
-        return reranker.rerank(query, candidates).stream()
+        // Apply metadata filters from the query before reranking
+        List<RetrievalResult> filtered = applyMetadataFilter(candidates, query.metadata());
+        if (!filtered.isEmpty() || !query.metadata().isEmpty()) {
+            log.debug("Metadata filter: {} → {} candidates (filters={})",
+                    candidates.size(), filtered.size(), query.metadata().keySet());
+        }
+
+        return reranker.rerank(query, filtered).stream()
                 .limit(finalLimit)
                 .toList();
+    }
+
+    /**
+     * Retains only results whose metadata contains every key-value pair in {@code filter}.
+     * An empty filter passes all results through unchanged.
+     */
+    static List<RetrievalResult> applyMetadataFilter(
+            List<RetrievalResult> results, Map<String, Object> filter) {
+        if (filter == null || filter.isEmpty()) return results;
+        return results.stream()
+                .filter(r -> matchesAll(r.metadata(), filter))
+                .toList();
+    }
+
+    private static boolean matchesAll(Map<String, Object> metadata, Map<String, Object> filter) {
+        for (Map.Entry<String, Object> entry : filter.entrySet()) {
+            Object actual = metadata.get(entry.getKey());
+            if (actual == null) return false;
+            if (!actual.toString().equals(entry.getValue().toString())) return false;
+        }
+        return true;
     }
 
     private static void addSource(String sourceName, List<RetrievalResult> candidates, RetrievalSource source) {

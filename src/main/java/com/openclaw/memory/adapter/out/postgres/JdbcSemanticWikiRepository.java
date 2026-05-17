@@ -76,7 +76,7 @@ public class JdbcSemanticWikiRepository implements SemanticWikiRepository {
     private MemoryRecord mapRow(ResultSet rs, int rowNum) throws SQLException {
         Map<String, Object> metadata = new LinkedHashMap<>(readJson(rs.getString("metadata")));
         metadata.putIfAbsent("title", rs.getString("title"));
-        return new MemoryRecord(
+        return MemoryRecord.create(
                 rs.getObject("id", UUID.class),
                 rs.getString("agent_id"),
                 null,

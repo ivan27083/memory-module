@@ -49,6 +49,16 @@ memory:
   working-ttl: ${MEMORY_WORKING_TTL:PT24H}
   retrieval-limit: ${MEMORY_RETRIEVAL_LIMIT:12}
 
+  # QMD sidecar (Node.js, @tobilu/qmd)
+  # Start with: cd qmd-server && npm install && node server.js
+  qmd:
+    enabled: ${QMD_ENABLED:false}
+    base-url: ${QMD_BASE_URL:http://localhost:9090}
+    connect-timeout: PT3S
+    request-timeout: PT10S
+    rerank: ${QMD_RERANK:false}
+    min-score: ${QMD_MIN_SCORE:0.0}
+
   http:
     connect-timeout: ${MEMORY_HTTP_CONNECT_TIMEOUT:PT3S}
     read-timeout: ${MEMORY_HTTP_READ_TIMEOUT:PT20S}
@@ -83,15 +93,29 @@ memory:
         max-decomposition-depth: 5
         timeout-seconds: 300
       retrieval:
+        # qmd        → Java QMDRetrievalEngine (no external deps)
+        # qmd-http   → @tobilu/qmd via Node.js sidecar (requires memory.qmd.enabled=true)
+        # legacy     → BlackboardRetriever (substring fallback)
         provider: ${RETRIEVAL_PROVIDER:qmd}
-        cache-enabled: true
-        cache-ttl-minutes: 60
+        cache-enabled: ${RETRIEVAL_CACHE_ENABLED:true}
+        cache-ttl-minutes: ${RETRIEVAL_CACHE_TTL_MINUTES:60}
         bm25-enabled: true
         vector-enabled: true
         rerank-enabled: true
       graph:
         max-nodes: 100000
         max-edges: 500000
+
+  maintenance:
+    episodic-retention: ${MEMORY_EPISODIC_RETENTION:P30D}
+    cleanup-cron: ${MEMORY_CLEANUP_CRON:0 0 3 * * *}
+
+  # Graph backend: in-memory (default) | kuzu
+  # kuzu requires: memory.graph.kuzu.path (default ./data/kuzu_graph)
+  graph:
+    backend: ${GRAPH_BACKEND:kuzu}
+    kuzu:
+      path: ${KUZU_DB_PATH:./data/kuzu_graph}
 
     # Performance Configuration
     performance:
