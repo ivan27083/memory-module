@@ -8,11 +8,11 @@ import com.openclaw.memory.domain.port.VectorIndex;
 import com.openclaw.memory.retrieval.QMDClient;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -38,10 +38,19 @@ public class MemoryConsolidationService implements MemoryConsolidationPort {
         this.qmdClient       = qmdClient;
     }
 
-    @Async
+    @Override
     public void indexMemory(MemoryRecord record) {
         indexVector(record);
         indexQmd(record);
+    }
+
+    @Override
+    public void deleteMemory(UUID id) {
+        try {
+            vectorIndex.delete(id);
+        } catch (RuntimeException ex) {
+            log.warn("Failed to delete vector for record {}: {}", id, ex.getMessage());
+        }
     }
 
     // ── Vector (Qdrant) ───────────────────────────────────────────────────────

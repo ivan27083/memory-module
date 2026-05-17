@@ -90,6 +90,10 @@ public class DefaultMemoryFacade implements MemoryFacade {
                         "Use RAG ingestion or memory records instead of direct " + type + " writes");
             };
 
+            for (MemoryRecord superseded : existingWithSubject) {
+                consolidationService.deleteMemory(superseded.id());
+            }
+
             if (saved.type() == MemoryType.EPISODIC || saved.type() == MemoryType.SEMANTIC_WIKI) {
                 consolidationService.indexMemory(saved);
             }

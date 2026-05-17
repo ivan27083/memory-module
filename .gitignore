@@ -1,6 +1,31 @@
+# Build output
 target/
+
+# IDEs
 .idea/
 .vscode/
+.gigaide/
 *.iml
+
+# Local dev tool configs (contain machine-specific absolute paths)
+.repowise/
+.claude/
+.mcp.json
+
+# Runtime data
+data/
+logs/
 *.log
+
+# Secrets
 .env
+
+# Node.js
+node_modules/
+openclaw-memory-module-http/node_modules/
+qmd-server/node_modules/
+
+# JVM crash / heap dumps
+*.dump
+*.hprof
+hs_err_pid*.log

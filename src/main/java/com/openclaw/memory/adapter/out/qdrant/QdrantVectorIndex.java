@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
@@ -79,6 +80,17 @@ public class QdrantVectorIndex implements VectorIndex {
     }
 
     @Override
+    public void delete(java.util.UUID id) {
+        log.debug("Deleting vector document id={}", id);
+        restClient.post()
+                .uri("/collections/{collection}/points/delete?wait=true", properties.vector().collection())
+                .body(Map.of("points", List.of(id.toString())))
+                .retrieve()
+                .toBodilessEntity();
+        log.debug("Vector document deleted id={}", id);
+    }
+
+    @Override
     public List<RetrievalResult> search(List<Double> vector, int limit, Map<String, Object> filters) {
         Map<?, ?> response = restClient.post()
                 .uri("/collections/{collection}/points/search", properties.vector().collection())
@@ -89,14 +101,14 @@ public class QdrantVectorIndex implements VectorIndex {
                         "filter", filter(filters)
                 ))
                 .retrieve()
-                .body(Map.class);
+                .body(new ParameterizedTypeReference<Map<?, ?>>() {});
 
         if (response == null || !(response.get("result") instanceof List<?> result)) {
             return List.of();
         }
         return result.stream()
-                .filter(Map.class::isInstance)
-                .map(Map.class::cast)
+                .filter(item -> item instanceof Map<?, ?>)
+                .map(item -> (Map<?, ?>) item)
                 .map(this::toResult)
                 .toList();
     }

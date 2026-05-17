@@ -29,15 +29,19 @@ public class RagIngestionService {
         this.vectorIndex = vectorIndex;
     }
 
-    public List<DocumentChunk> ingest(String source, String title, String content, Map<String, Object> metadata) {
+    public List<DocumentChunk> ingest(String agentId, String source, String title, String content, Map<String, Object> metadata) {
         if (!StringUtils.hasText(source) || !StringUtils.hasText(title) || !StringUtils.hasText(content)) {
             throw new IllegalArgumentException("source, title and content are required");
         }
+        if (!StringUtils.hasText(agentId)) {
+            throw new IllegalArgumentException("agentId is required for RAG ingestion");
+        }
 
         List<DocumentChunk> chunks = chunk(source, title, content, metadata == null ? Map.of() : metadata);
-        log.info("Starting RAG ingestion for source={}, title={}, chunks={}", source, title, chunks.size());
+        log.info("Starting RAG ingestion for agentId={}, source={}, title={}, chunks={}", agentId, source, title, chunks.size());
         for (DocumentChunk chunk : chunks) {
             Map<String, Object> payload = new LinkedHashMap<>(chunk.metadata());
+            payload.put("agentId", agentId);
             payload.put("source", chunk.source());
             payload.put("title", chunk.title());
             payload.put("ordinal", chunk.ordinal());
@@ -52,7 +56,7 @@ public class RagIngestionService {
                     payload
             ));
         }
-        log.info("Finished RAG ingestion for source={}, title={}", source, title);
+        log.info("Finished RAG ingestion for agentId={}, source={}, title={}", agentId, source, title);
         return chunks;
     }
 

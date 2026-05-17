@@ -1,6 +1,6 @@
 import express from 'express';
 import { createStore } from '@tobilu/qmd';
-import { writeFile, unlink, mkdir, readFile } from 'fs/promises';
+import { writeFile, unlink, mkdir } from 'fs/promises';
 import { join, basename } from 'path';
 
 const MEMORIES_DIR = process.env.QMD_MEMORIES_DIR || './qmd-memories';

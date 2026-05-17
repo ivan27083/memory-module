@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Performance and reliability regression tests for memory module.
@@ -143,20 +144,11 @@ public class MemoryPerformanceRegressionTest {
     }
 
     @Test
-    @DisplayName("Reliability - handle empty string gracefully in retrieval")
+    @DisplayName("Reliability - empty prompt rejected with clear error")
     void testReliability_EmptyStringRetrieval() {
-        // Setup
-        memoryFacade.write(new MemoryWriteCommand(
-            agentId, sessionId, MemoryType.EPISODIC,
-            "Test memory",
-            Map.of()
-        ));
-
-        // When & Then - should not throw, return empty or results
-        List<RetrievalResult> results = memoryFacade.retrieve(
-            new RetrievalQuery(agentId, sessionId, "", 5, Map.of())
+        assertThrows(IllegalArgumentException.class, () ->
+            memoryFacade.retrieve(new RetrievalQuery(agentId, sessionId, "", 5, Map.of()))
         );
-        assertThat(results).isNotNull();
     }
 
     @Test
@@ -276,13 +268,11 @@ public class MemoryPerformanceRegressionTest {
     }
 
     @Test
-    @DisplayName("Reliability - empty agent ID handling")
+    @DisplayName("Reliability - empty agent ID rejected with clear error")
     void testReliability_EmptyAgentId() {
-        // When & Then - should handle gracefully
-        List<RetrievalResult> results = memoryFacade.retrieve(
-            new RetrievalQuery("", sessionId, "query", 5, Map.of())
+        assertThrows(IllegalArgumentException.class, () ->
+            memoryFacade.retrieve(new RetrievalQuery("", sessionId, "query", 5, Map.of()))
         );
-        assertThat(results).isNotNull();
     }
 
     @Test

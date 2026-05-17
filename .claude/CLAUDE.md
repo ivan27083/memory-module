@@ -11,7 +11,7 @@
 > (documentation, ownership, history, decisions). **Always verify against
 > actual source files before making changes** — the index may be stale.
 
-Last indexed: 2026-05-17 (commit 561e946)
+Last indexed: 2026-05-17 (commit 72725c7)
 ### Entry Points
 - `openclaw-memory-module-http/index.js`
 - `qmd-server/server.js`
@@ -22,11 +22,11 @@ Last indexed: 2026-05-17 (commit 561e946)
 **Infra:** Docker, Docker Compose, Maven### Hotspots (High Churn)
 | File | Churn | 90d Commits | Owner |
 |------|-------|-------------|-------|
-| `src/main/java/com/openclaw/memory/agents/conflict/ConflictResolutionAgentImpl.java` | 98.8th %ile | 2 | ubrioniks |
-| `src/main/java/com/openclaw/memory/agents/multimodal/MultimodalAgentImpl.java` | 97.6th %ile | 2 | ubrioniks |
-| `src/test/java/com/openclaw/memory/regression/MemoryMultimodalRetrievalTest.java` | 96.4th %ile | 2 | ubrioniks |
-| `src/main/java/com/openclaw/memory/agents/observability/ObservabilitySystem.java` | 95.2th %ile | 2 | ubrioniks |
-| `src/test/java/com/openclaw/memory/regression/MemoryOCRRetrievalTest.java` | 94.0th %ile | 2 | ubrioniks |
+| `src/main/java/com/openclaw/memory/working_memory/WorkingMemoryComposer.java` | 99.1th %ile | 4 | ubrioniks |
+| `src/main/java/com/openclaw/memory/agents/conflict/ConflictResolutionAgentImpl.java` | 98.1th %ile | 2 | ubrioniks |
+| `src/main/java/com/openclaw/memory/agents/multimodal/MultimodalAgentImpl.java` | 97.2th %ile | 2 | ubrioniks |
+| `src/test/java/com/openclaw/memory/regression/MemoryMultimodalRetrievalTest.java` | 96.3th %ile | 2 | ubrioniks |
+| `src/main/java/com/openclaw/memory/agents/observability/ObservabilitySystem.java` | 95.4th %ile | 2 | ubrioniks |
 
 ### Repowise MCP Tools
 

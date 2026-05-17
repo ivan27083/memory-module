@@ -37,8 +37,8 @@ public class MemoryApiIntegrationTest {
 
     private String baseUrl;
 
-    private String agentId = "test-agent";
-    private String sessionId = "test-session";
+    private final String agentId = "test-agent";
+    private final String sessionId = "test-session";
 
     @BeforeEach
     void setUp() {
@@ -80,6 +80,7 @@ public class MemoryApiIntegrationTest {
     void testRag_IngestDocument() {
         // Запрос
         Map<String, Object> request = Map.of(
+                "agentId", agentId,
                 "source", "user-upload",
                 "title", "Введение в Spring Boot",
                 "content", "Spring Boot — фреймворк для быстрой разработки на Java. Упрощает настройку и развертывание приложений."
@@ -90,19 +91,18 @@ public class MemoryApiIntegrationTest {
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
 
-        // ✅ Исправлено: ожидаем List, а не Map
-        ResponseEntity<List> response = restTemplate.exchange(
+        ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                 baseUrl + "/api/rag/ingest",
                 HttpMethod.POST,
                 entity,
-                new ParameterizedTypeReference<List>() {}
+                new ParameterizedTypeReference<List<Map<String, Object>>>() {}
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isNotEmpty();
 
         // Проверим первый элемент
-        Map<String, Object> firstChunk = (Map<String, Object>) response.getBody().get(0);
+        Map<String, Object> firstChunk = response.getBody().get(0);
         assertThat(firstChunk).isNotNull();
         assertThat(firstChunk.get("content")).toString().contains("Spring Boot");
     }
@@ -129,7 +129,7 @@ public class MemoryApiIntegrationTest {
                 MemoryRecord.class
         );
 
-        assertThat(writeRes.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(writeRes.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(writeRes.getBody()).isNotNull();
         assertThat(writeRes.getBody().content()).contains("Kotlin");
 
@@ -152,7 +152,7 @@ public class MemoryApiIntegrationTest {
 
         assertThat(retrieveRes.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(retrieveRes.getBody()).isNotEmpty();
-        assertThat(((Map) retrieveRes.getBody().get(0)).get("content"))
+        assertThat(retrieveRes.getBody().get(0).get("content"))
                 .toString().contains("Kotlin");
     }
 }

@@ -4,6 +4,7 @@ import com.openclaw.memory.config.MemoryModuleProperties;
 import com.openclaw.memory.domain.port.EmbeddingClient;
 import java.util.List;
 import java.util.Map;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -28,7 +29,7 @@ public class OpenAiCompatibleEmbeddingClient implements EmbeddingClient {
                 .uri("/embeddings")
                 .body(Map.of("model", properties.embedding().model(), "input", content))
                 .retrieve()
-                .body(Map.class);
+                .body(new ParameterizedTypeReference<Map<?, ?>>() {});
 
         if (response == null || !(response.get("data") instanceof List<?> data) || data.isEmpty()) {
             throw new IllegalStateException("Embedding provider returned no embedding data");

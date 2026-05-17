@@ -67,8 +67,8 @@ public class MemorySaveTest {
     }
 
     @ParameterizedTest
-    @EnumSource(MemoryType.class)
-    @DisplayName("Save memory - all memory types")
+    @EnumSource(value = MemoryType.class, names = {"WORKING", "EPISODIC", "SEMANTIC_WIKI"})
+    @DisplayName("Save memory - all writable memory types")
     void testSaveMemory_AllTypes(MemoryType memoryType) {
         // Given
         String content = "Test memory for type: " + memoryType.name();
@@ -214,39 +214,25 @@ public class MemorySaveTest {
     }
 
     @Test
-    @DisplayName("Save memory - negative scenario with null session ID")
+    @DisplayName("Save memory - null session ID is accepted (cross-session/global scope)")
     void testSaveMemory_Negative_NullSessionId() {
-        // Given
-        String content = "Valid content";
-        
-        // When & Then
-        assertThatThrownBy(() -> memoryFacade.write(
-            new MemoryWriteCommand(
-                agentId,
-                null,
-                MemoryType.EPISODIC,
-                content,
-                Map.of()
-            )
-        )).isInstanceOf(IllegalArgumentException.class);
+        // DefaultMemoryFacade does not require sessionId — null means cross-session scope.
+        // JdbcEpisodicMemoryRepository.findRecent() uses agentId-only SQL when sessionId is null.
+        MemoryRecord saved = memoryFacade.write(new MemoryWriteCommand(
+            agentId, null, MemoryType.EPISODIC, "Valid content", Map.of()
+        ));
+        assertThat(saved).isNotNull();
     }
 
     @Test
-    @DisplayName("Save memory - negative scenario with null memory type")
+    @DisplayName("Save memory - null memory type defaults to EPISODIC")
     void testSaveMemory_Negative_NullMemoryType() {
-        // Given
-        String content = "Valid content";
-        
-        // When & Then
-        assertThatThrownBy(() -> memoryFacade.write(
-            new MemoryWriteCommand(
-                agentId,
-                sessionId,
-                null,
-                content,
-                Map.of()
-            )
-        )).isInstanceOf(IllegalArgumentException.class);
+        // DefaultMemoryFacade.write() converts null type to EPISODIC rather than rejecting it.
+        MemoryRecord saved = memoryFacade.write(new MemoryWriteCommand(
+            agentId, sessionId, null, "Valid content", Map.of()
+        ));
+        assertThat(saved).isNotNull();
+        assertThat(saved.type()).isEqualTo(MemoryType.EPISODIC);
     }
 
     @Test

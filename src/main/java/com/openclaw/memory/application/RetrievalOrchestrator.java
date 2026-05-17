@@ -1,7 +1,6 @@
 package com.openclaw.memory.application;
 
 import com.openclaw.memory.domain.model.MemoryRecord;
-import com.openclaw.memory.domain.model.MemoryType;
 import com.openclaw.memory.domain.model.RetrievalQuery;
 import com.openclaw.memory.domain.model.RetrievalResult;
 import com.openclaw.memory.domain.port.EmbeddingClient;
@@ -15,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -70,16 +70,28 @@ public class RetrievalOrchestrator {
         addSource("external RAG", candidates, () ->
                 externalKnowledgeRetriever.retrieve(query));
 
+        List<RetrievalResult> deduped = deduplicate(candidates);
+
         // Apply metadata filters from the query before reranking
-        List<RetrievalResult> filtered = applyMetadataFilter(candidates, query.metadata());
+        List<RetrievalResult> filtered = applyMetadataFilter(deduped, query.metadata());
         if (!filtered.isEmpty() || !query.metadata().isEmpty()) {
             log.debug("Metadata filter: {} → {} candidates (filters={})",
-                    candidates.size(), filtered.size(), query.metadata().keySet());
+                    deduped.size(), filtered.size(), query.metadata().keySet());
         }
 
         return reranker.rerank(query, filtered).stream()
                 .limit(finalLimit)
                 .toList();
+    }
+
+    // When the same sourceId appears from multiple sources, keep the entry with the highest score.
+    private static List<RetrievalResult> deduplicate(List<RetrievalResult> results) {
+        Map<UUID, RetrievalResult> best = new java.util.LinkedHashMap<>();
+        for (RetrievalResult r : results) {
+            best.merge(r.sourceId(), r,
+                    (a, b) -> a.score() >= b.score() ? a : b);
+        }
+        return new ArrayList<>(best.values());
     }
 
     /**

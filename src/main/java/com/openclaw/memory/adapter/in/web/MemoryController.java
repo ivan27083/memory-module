@@ -58,6 +58,7 @@ public class MemoryController {
     @PostMapping("/rag/ingest")
     public List<DocumentChunk> ingest(@Valid @RequestBody IngestDocumentRequest request) {
         return ragIngestionService.ingest(
+                request.agentId(),
                 request.source(),
                 request.title(),
                 request.content(),
@@ -84,6 +85,7 @@ public class MemoryController {
     }
 
     public record IngestDocumentRequest(
+            @NotBlank String agentId,
             @NotBlank String source,
             @NotBlank String title,
             @NotBlank String content,

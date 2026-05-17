@@ -4,4 +4,6 @@ import com.openclaw.memory.domain.model.MemoryRecord;
 
 public interface MemoryConsolidationPort {
     void indexMemory(MemoryRecord record);
+
+    void deleteMemory(java.util.UUID id);
 }

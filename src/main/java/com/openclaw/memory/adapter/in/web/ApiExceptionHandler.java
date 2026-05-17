@@ -30,13 +30,13 @@ public class ApiExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleUnreadable(HttpMessageNotReadableException ex) {
         return ResponseEntity.badRequest()
-                .body(new ApiError("malformed_request", "Could not parse request body", null, Instant.now()));
+                .body(new ApiError("malformed_request", "Could not parse request body", List.of(), Instant.now()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiError> handleBadRequest(IllegalArgumentException ex) {
         return ResponseEntity.badRequest()
-                .body(new ApiError("bad_request", ex.getMessage(), null, Instant.now()));
+                .body(new ApiError("bad_request", ex.getMessage(), List.of(), Instant.now()));
     }
 
     @ExceptionHandler(RestClientResponseException.class)
@@ -54,7 +54,7 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiError> handleUnexpected(Exception ex) {
         log.error("Unhandled exception", ex);
         return ResponseEntity.internalServerError()
-                .body(new ApiError("internal_error", "An unexpected error occurred", null, Instant.now()));
+                .body(new ApiError("internal_error", "An unexpected error occurred", List.of(), Instant.now()));
     }
 
     public record ApiError(

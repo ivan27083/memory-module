@@ -10,5 +10,7 @@ public interface VectorIndex {
 
     void upsert(VectorDocument document);
 
+    void delete(java.util.UUID id);
+
     List<RetrievalResult> search(List<Double> vector, int limit, Map<String, Object> filters);
 }

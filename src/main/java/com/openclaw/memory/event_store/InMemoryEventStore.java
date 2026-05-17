@@ -124,8 +124,7 @@ public class InMemoryEventStore implements EventStore {
     
     @Override
     public String exportToParquet(String outputPath) {
-        // TODO: Реализовать экспорт в Parquet
-        return "Export to " + outputPath + " not implemented yet";
+        throw new UnsupportedOperationException("Parquet export is not implemented");
     }
     
     @Override

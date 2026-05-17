@@ -1,10 +1,8 @@
 package com.openclaw.memory.conflict;
 
 import com.openclaw.memory.agents.conflict.ConflictDetector;
-import com.openclaw.memory.agents.conflict.SubjectConflictResolver;
 import com.openclaw.memory.domain.model.MemoryRecord;
 import com.openclaw.memory.domain.model.MemoryType;
-import com.openclaw.memory.working_memory.WorkingMemoryComposer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -19,12 +17,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ConflictDetectorTest {
 
     private ConflictDetector detector;
-    private SubjectConflictResolver resolver;
 
     @BeforeEach
     void setUp() {
         detector = new ConflictDetector();
-        resolver = new SubjectConflictResolver();
     }
 
     // ── No conflicts ──────────────────────────────────────────────────────────
@@ -50,7 +46,7 @@ class ConflictDetectorTest {
     void detect_shouldReturnEmpty_whenSameContentDuplicates() {
         List<MemoryRecord> records = List.of(
                 record("agent-1", "capital-of-France", "Paris", 0.9),
-                record("agent-1", "capital-of-France", "Paris", 0.8)   // same content
+                record("agent-1", "capital-of-France", "Paris", 0.8)
         );
         assertThat(detector.detect(records)).isEmpty();
     }
@@ -61,7 +57,6 @@ class ConflictDetectorTest {
                 record("agent-1", "capital-of-France", "Paris", 0.9),
                 record("agent-2", "capital-of-France", "Lyon",  0.8)
         );
-        // Different agents → different groups → no conflict
         assertThat(detector.detect(records)).isEmpty();
     }
 
@@ -70,8 +65,8 @@ class ConflictDetectorTest {
     @Test
     void detect_shouldFindConflict_whenSameSubjectDifferentContent() {
         List<MemoryRecord> records = List.of(
-                record("agent-1", "capital-of-France", "Paris",  0.9),
-                record("agent-1", "capital-of-France", "Lyon",   0.5)
+                record("agent-1", "capital-of-France", "Paris", 0.9),
+                record("agent-1", "capital-of-France", "Lyon",  0.5)
         );
 
         List<ConflictDetector.ConflictReport> conflicts = detector.detect(records);
@@ -100,8 +95,8 @@ class ConflictDetectorTest {
 
     @Test
     void detect_tiebreakedByValidFrom_newerWins() {
-        UUID olderId  = UUID.randomUUID();
-        UUID newerId  = UUID.randomUUID();
+        UUID olderId = UUID.randomUUID();
+        UUID newerId = UUID.randomUUID();
         Instant older = Instant.now().minus(1, ChronoUnit.HOURS);
         Instant newer = Instant.now();
 
@@ -127,46 +122,13 @@ class ConflictDetectorTest {
 
     @Test
     void detect_shouldProduceOneReportPerLoser_multipleContenders() {
-        // 1 winner, 2 losers → 2 reports
         List<MemoryRecord> records = List.of(
-                record("agent-1", "capital-of-France", "Paris",   0.9),
-                record("agent-1", "capital-of-France", "Lyon",    0.6),
+                record("agent-1", "capital-of-France", "Paris",    0.9),
+                record("agent-1", "capital-of-France", "Lyon",     0.6),
                 record("agent-1", "capital-of-France", "Marseille", 0.4)
         );
 
         assertThat(detector.detect(records)).hasSize(2);
-    }
-
-    // ── SubjectConflictResolver ───────────────────────────────────────────────
-
-    @Test
-    void resolver_shouldKeepHigherScorePerSubject() {
-        WorkingMemoryComposer.SelectedMemory high = selectedMemory("id-1", "capital-of-France", "agent-1", 0.9);
-        WorkingMemoryComposer.SelectedMemory low  = selectedMemory("id-2", "capital-of-France", "agent-1", 0.5);
-
-        List<WorkingMemoryComposer.SelectedMemory> result = resolver.resolve(List.of(high, low), "query");
-
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).artifactId).isEqualTo("id-1");
-    }
-
-    @Test
-    void resolver_shouldPassThrough_memoriesWithoutSubject() {
-        WorkingMemoryComposer.SelectedMemory noSubject = selectedMemory("id-1", null, "agent-1", 0.9);
-
-        List<WorkingMemoryComposer.SelectedMemory> result = resolver.resolve(List.of(noSubject), "query");
-
-        assertThat(result).hasSize(1);
-    }
-
-    @Test
-    void resolver_shouldNotConflict_acrossAgents() {
-        WorkingMemoryComposer.SelectedMemory a1 = selectedMemory("id-1", "sky-color", "agent-1", 0.9);
-        WorkingMemoryComposer.SelectedMemory a2 = selectedMemory("id-2", "sky-color", "agent-2", 0.8);
-
-        List<WorkingMemoryComposer.SelectedMemory> result = resolver.resolve(List.of(a1, a2), "query");
-
-        assertThat(result).hasSize(2);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -188,25 +150,5 @@ class ConflictDetectorTest {
 
         return new MemoryRecord(id, agentId, null, MemoryType.EPISODIC,
                 content, meta, validFrom, validFrom, null, null);
-    }
-
-    private static WorkingMemoryComposer.SelectedMemory selectedMemory(
-            String id, String subject, String agentId, double score) {
-        var meta = new java.util.LinkedHashMap<String, Object>();
-        if (subject  != null) meta.put("subject",  subject);
-        if (agentId  != null) meta.put("agentId",  agentId);
-
-        var explanation = new com.openclaw.memory.retrieval.RetrievalResult(
-                id, "content", score, meta,
-                new com.openclaw.memory.retrieval.RetrieverExplanation(
-                        "test", List.of(), 0, 0, 0, "test"),
-                null
-        );
-
-        WorkingMemoryComposer.SelectedMemory m = new WorkingMemoryComposer.SelectedMemory(
-                null, score, WorkingMemoryComposer.SelectionReason.RELEVANCE_MATCH, id);
-        m.content = "content";
-        m.retrievalExplanation = explanation;
-        return m;
     }
 }

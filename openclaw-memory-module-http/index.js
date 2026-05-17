@@ -89,7 +89,7 @@ async function postJson(config, path, body, signal) {
     const text = await response.text();
     const payload = text ? parseJson(text) : null;
     if (!response.ok) {
-      const detail = payload?.message || payload?.detail || text || response.statusText;
+      const detail = payload?.message || text || response.statusText;
       throw new Error(`${path} failed with HTTP ${response.status}: ${detail}`);
     }
     return payload;

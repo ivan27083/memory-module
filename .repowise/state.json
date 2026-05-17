@@ -1,19 +1,19 @@
 {
-  "last_sync_commit": "561e94684821fba3a84816dee550e491e9dbac66",
+  "last_sync_commit": "72725c708cc44131b725f9ad8594c35376b0dfa4",
   "docs_enabled": false,
   "phase_timings": {
-    "traverse": 0.28,
-    "co_change": 0.04,
+    "traverse": 0.33,
+    "co_change": 0.03,
     "parse": 6.01,
-    "graph.imports": 0.15,
-    "graph.type_refs": 0.03,
-    "graph.heritage": 0.11,
-    "graph.calls": 0.06,
-    "git": 11.27,
-    "graph.metrics": 1.77,
-    "graph.communities": 0.1,
-    "dead_code": 0.79,
-    "decisions": 0.16,
+    "graph.imports": 0.02,
+    "graph.type_refs": 0.01,
+    "graph.heritage": 0.0,
+    "graph.calls": 0.05,
+    "git": 15.79,
+    "graph.metrics": 0.87,
+    "graph.communities": 0.08,
+    "dead_code": 0.7,
+    "decisions": 0.34,
     "graph.flows": 0.01
   }
 }

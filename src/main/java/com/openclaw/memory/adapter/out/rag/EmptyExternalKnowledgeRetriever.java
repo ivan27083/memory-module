@@ -26,7 +26,10 @@ public class EmptyExternalKnowledgeRetriever implements ExternalKnowledgeRetriev
         return vectorIndex.search(
                 embeddingClient.embed(query.prompt()),
                 Math.max(query.limit(), 1),
-                Map.of("sourceType", MemoryType.EXTERNAL_RAG.name())
+                Map.of(
+                    "sourceType", MemoryType.EXTERNAL_RAG.name(),
+                    "agentId", query.agentId()
+                )
         );
     }
 }
